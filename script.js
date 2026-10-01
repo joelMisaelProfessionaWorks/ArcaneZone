@@ -93,7 +93,9 @@ function renderProducts() {
         }
 
         const card = document.createElement('div');
-        card.className = 'game-card dynamic-card';
+        // Aseguramos de agregar la categoría (en minúsculas) como clase para poder filtrarla
+        const catClass = prod.category ? prod.category.toLowerCase() : 'otra';
+        card.className = `game-card dynamic-card product-item ${catClass}`;
         card.innerHTML = `
             <img src="${prod.image_url}" alt="${prod.name}" class="${isSoldOut ? 'sold-out-img' : ''}">
             <div class="game-info">
@@ -104,6 +106,28 @@ function renderProducts() {
             </div>
         `;
         container.appendChild(card);
+    });
+}
+
+// Función para filtrar los productos por categoría
+function filterCatalog(categoria, botonClickeado) {
+    // 1. Quitar estado activo a todos los botones
+    document.querySelectorAll('.filter-container .filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    // 2. Poner estado activo al botón presionado
+    botonClickeado.classList.add('active');
+
+    // 3. Mostrar/Ocultar tarjetas
+    const cards = document.querySelectorAll('.product-item');
+    cards.forEach(card => {
+        if (categoria === 'todas') {
+            card.style.display = 'block';
+        } else if (card.classList.contains(categoria)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
     });
 }
 

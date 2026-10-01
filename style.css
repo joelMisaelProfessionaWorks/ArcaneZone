@@ -94,14 +94,17 @@ header {
 /* -----------------------------------------
    6. CARACTERÍSTICAS (Index)
    ----------------------------------------- */
-.features { padding: 5rem 5%; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
+.features { padding: 5rem 5%; }
+.features h2 { text-align: center; font-size: 2.5rem; margin-bottom: 3rem; color: var(--neon-blue); }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
 .feature-card {
     background: rgba(255, 255, 255, 0.05); padding: 2rem; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1);
-    text-align: center; transition: transform 0.3s, box-shadow 0.3s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
 }
 .feature-card:hover { transform: translateY(-10px); box-shadow: var(--glow-shadow); }
-.feature-card i { font-size: 2.5rem; margin-bottom: 1rem; color: var(--neon-pink); }
-.feature-card h3 { font-size: 1.5rem; margin-bottom: 1rem; color: var(--neon-blue); }
+.feature-card i { font-size: 2.5rem; margin-bottom: 1rem; color: var(--neon-pink); display: block; text-align: center; }
+.feature-card h3 { font-size: 1.5rem; margin-bottom: 1rem; color: var(--neon-blue); width: 100%; }
 
 /* -----------------------------------------
    7. CARRUSEL INFINITO DE TARJETAS (Index)
@@ -123,8 +126,12 @@ header {
 .game-info h3 { font-size: 1.3rem; margin-bottom: 0.5rem; color: var(--neon-blue); }
 
 /* -----------------------------------------
-   8. CATÁLOGO DE PRODUCTOS DINÁMICOS
+   8. CATÁLOGO DE PRODUCTOS DINÁMICOS Y FILTROS
    ----------------------------------------- */
+.filter-container { display: flex; justify-content: center; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap; padding: 0 5%; }
+.filter-btn { background: transparent; color: var(--light-text); border: 2px solid var(--neon-blue); padding: 0.6rem 1.5rem; border-radius: 30px; cursor: pointer; font-size: 1.1rem; text-transform: uppercase; transition: all 0.3s ease; }
+.filter-btn:hover, .filter-btn.active { background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple)); color: white; border-color: transparent; box-shadow: 0 0 15px var(--neon-blue); transform: translateY(-3px); }
+
 .dynamic-products-container { display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; padding: 0 5%; }
 .variant-select {
     background: transparent; color: white; border: 1px solid var(--neon-blue); border-radius: 5px;

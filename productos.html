@@ -29,6 +29,20 @@
     <!-- 3. Catálogo de Productos (Conectado a Cloudflare D1) -->
     <section class="games" id="catalogo">
         <h2>Catálogo Dinámico</h2>
+
+        <!-- Barra de Filtros -->
+        <div class="filter-container">
+            <button class="filter-btn active" onclick="filterCatalog('todas', this)">Todas</button>
+            <button class="filter-btn" onclick="filterCatalog('completa', this)">Cuentas Completas</button>
+            <button class="filter-btn" onclick="filterCatalog('perfil', this)">Perfil</button>
+            <button class="filter-btn" onclick="filterCatalog('spotify', this)">Spotify</button>
+            <button class="filter-btn" onclick="filterCatalog('smartfit', this)">Smartfit</button>
+            <button class="filter-btn" onclick="filterCatalog('duolingo', this)">Duolingo</button>
+            <button class="filter-btn" onclick="filterCatalog('canva', this)">Canva</button>
+            <button class="filter-btn" onclick="filterCatalog('seguidores', this)">Seguidores</button>
+            <button class="filter-btn" onclick="filterCatalog('recargas', this)">Recargas</button>
+        </div>
+
         <!-- Contenedor donde JavaScript inyectará las tarjetas de productos de la BD -->
         <div id="dynamic-products" class="dynamic-products-container">
             <p style="color: var(--neon-blue);">Conectando con la base de datos D1...</p>
