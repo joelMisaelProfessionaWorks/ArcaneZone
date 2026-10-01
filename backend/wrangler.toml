@@ -1,0 +1,8 @@
+name = "arcana-backend"
+main = "src/index.js"
+compatibility_date = "2024-03-20"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "arcana-db"
+database_id = "5a7f83fa-4f65-491f-8a9a-a7ca71c2541a"

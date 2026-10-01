@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Metadatos y Estilos Globales -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcana - Panel de Administración</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 1. Encabezado Básico -->
+    <header>
+        <div class="logo">Zona Arcana Admin</div>
+    </header>
+    
+    <!-- 2. Caja de Autenticación (Login) -->
+    <div class="admin-container" id="login-box">
+        <h2>Acceso Administrativo</h2>
+        <!-- Input provisional para contraseña -->
+        <input type="password" id="admin-pass" placeholder="Contraseña de acceso" style="padding: 10px; width: 100%; margin: 10px 0; background: transparent; color: white; border: 1px solid var(--neon-blue);">
+        <!-- Llama a la función login() en script.js -->
+        <button class="cta-btn" onclick="login()">Ingresar</button>
+    </div>
+
+    <!-- 3. Panel de Control del Inventario (Oculto al inicio) -->
+    <div class="admin-container" id="dashboard" style="display: none;">
+        <h2>Gestión de Inventario</h2>
+        <!-- Tabla donde JS insertará los botones de Activo/Agotado conectados a D1 -->
+        <table id="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <p style="margin-top:20px; font-size:0.9rem; opacity:0.8;">(Nota: Para añadir productos nuevos, usa la base de datos D1 en el panel web de Cloudflare).</p>
+    </div>
+
+    <!-- Referencia al archivo único de funciones -->
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Metadatos y Estilos Globales -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcana - Catálogo de Productos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.0/css/all.min.css" />
+    <!-- Referencia al archivo único de diseño -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 1. Pantalla de carga Inicial -->
+    <div id="loader"><div class="loader-spinner"></div></div>
+    
+    <!-- 2. Barra de Navegación -->
+    <header>
+        <div class="logo">Zona Arcana</div>
+        <nav class="nav-links">
+            <a href="index.html#features">Inicio</a>
+            <a href="index.html#games">Venta</a>
+            <a href="productos.html">Productos</a>
+        </nav>
+    </header>
+    
+    <div style="padding-top: 100px;"></div>
+
+    <!-- 3. Catálogo de Productos (Conectado a Cloudflare D1) -->
+    <section class="games" id="catalogo">
+        <h2>Catálogo Dinámico</h2>
+        <!-- Contenedor donde JavaScript inyectará las tarjetas de productos de la BD -->
+        <div id="dynamic-products" class="dynamic-products-container">
+            <p style="color: var(--neon-blue);">Conectando con la base de datos D1...</p>
+        </div>
+    </section>
+
+    <!-- 4. Botón Flotante del Carrito -->
+    <div class="cart-btn-fixed" onclick="toggleCart()">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="cart-badge" id="cart-count">0</span>
+    </div>
+
+    <!-- 5. Ventana Modal del Carrito (Lista de Compra) -->
+    <div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
+    <div class="cart-modal" id="cart-modal">
+        <h3 style="color: var(--neon-blue); margin-bottom: 1rem;">Tu Cotización</h3>
+        <div id="cart-items"></div>
+        <h4 style="text-align: right; margin: 1rem 0;">Total: $<span id="cart-total">0</span> MXN</h4>
+        <!-- Botón que ejecuta la función de enviar a WhatsApp (en script.js) -->
+        <button class="cta-btn" style="width: 100%;" onclick="sendWhatsApp()">Hacer pedido por WhatsApp</button>
+    </div>
+
+    <!-- 6. Pie de Página Simple -->
+    <footer>
+        <div class="copyright"><p>© 2026 Zona Arcana. Todos los derechos reservados.</p></div>
+    </footer>
+
+    <!-- Referencia al archivo único de funciones -->
+    <script src="script.js"></script>
+</body>
+</html>
