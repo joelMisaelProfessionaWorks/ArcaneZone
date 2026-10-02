@@ -126,36 +126,45 @@ function addToCart(btnElement) {
     let priceText = priceElement.innerText;
     let options = extractPrices(priceText);
     
-    let selectedOption = options[0];
-    
     if (options.length > 1) {
-        let promptText = "Este producto tiene varias opciones. Elige el número de la opción que deseas:\n";
-        options.forEach((opt, idx) => {
-            promptText += `${idx + 1}. ${opt.name} - $${opt.price}\n`;
-        });
-        let choice = window.prompt(promptText, "1");
-        if (choice === null) return; // Cancelado
-        let index = parseInt(choice) - 1;
-        if (index >= 0 && index < options.length) {
-            selectedOption = options[index];
-        } else {
-            alert("Opción inválida.");
-            return;
-        }
-    } else if (options.length === 0) {
+        showVariantModal(title, options);
+    } else if (options.length === 1) {
+        finishAddToCart(title, options[0]);
+    } else {
         alert("No se pudo leer el precio de este producto.");
-        return;
     }
-    
+}
+
+function showVariantModal(title, options) {
+    document.getElementById('variant-title').innerText = title;
+    const container = document.getElementById('variant-options');
+    container.innerHTML = '';
+    options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.innerText = `${opt.name} - ${opt.price} MXN`;
+        btn.style.cssText = "padding: 10px; background: transparent; border: 1px solid var(--neon-pink); color: white; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.3s; text-align: left; display: flex; justify-content: space-between;";
+        btn.onmouseover = () => { btn.style.background = "var(--neon-pink)"; btn.style.color = "var(--dark-bg)"; };
+        btn.onmouseout = () => { btn.style.background = "transparent"; btn.style.color = "white"; };
+        btn.onclick = () => {
+            finishAddToCart(title, opt);
+            closeVariantModal();
+        };
+        container.appendChild(btn);
+    });
+    document.getElementById('variant-modal').style.display = 'flex';
+}
+
+function closeVariantModal() {
+    document.getElementById('variant-modal').style.display = 'none';
+}
+
+function finishAddToCart(title, option) {
     cart.push({
         name: title,
-        variant: selectedOption.name,
-        price: selectedOption.price
+        variant: option.name,
+        price: option.price
     });
-    
     updateCartUI();
-    
-    // Animación del botón flotante
     const cartFloat = document.getElementById('cart-float');
     if(cartFloat) {
         cartFloat.style.transform = 'scale(1.2)';
