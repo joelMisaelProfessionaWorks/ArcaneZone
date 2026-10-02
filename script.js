@@ -81,31 +81,47 @@ function renderProducts() {
 
     allProducts.forEach(prod => {
         const isSoldOut = prod.is_active == 0;
-        
-        // Crea el menú de opciones (Ej: 1 Mes, Anual, etc.)
-        let variantsHTML = '';
-        if(prod.variants && prod.variants.length > 0) {
-            variantsHTML = '<select class="variant-select" id="var-'+prod.id+'">';
-            prod.variants.forEach((v, index) => {
-                variantsHTML += `<option value="${index}">${v.name} - $${v.price} MXN</option>`;
-            });
-            variantsHTML += '</select>';
-        }
-
-        const card = document.createElement('div');
-        // Aseguramos de agregar la categoría (en minúsculas) como clase para poder filtrarla
         const catClass = prod.category ? prod.category.toLowerCase() : 'otra';
-        card.className = `game-card dynamic-card product-item ${catClass}`;
-        card.innerHTML = `
-            <img src="${prod.image_url}" alt="${prod.name}" class="${isSoldOut ? 'sold-out-img' : ''}">
-            <div class="game-info">
-                <h3>${prod.name}</h3>
-                <p>${prod.description}</p>
-                ${isSoldOut ? '<h4 class="sold-out-text">AGOTADO</h4>' : variantsHTML}
-                ${!isSoldOut ? `<button class="cart-add-btn" onclick="addToCart(${prod.id})">Añadir al Carrito</button>` : ''}
-            </div>
-        `;
-        container.appendChild(card);
+
+        // Si el producto tiene variantes (diferentes precios/tiempos), creamos UNA TARJETA POR CADA VARIANTE
+        if (prod.variants && prod.variants.length > 0) {
+            prod.variants.forEach(variant => {
+                const card = document.createElement('div');
+                card.className = `game-card dynamic-card product-item ${catClass}`;
+                
+                // Mensaje directo a WhatsApp para este producto específico
+                const text = encodeURIComponent(`Hola Zona Arcana, me interesa el producto: ${prod.name} [${variant.name}] por $${variant.price} MXN. ¿Está disponible?`);
+                const waLink = `https://wa.me/528442279216?text=${text}`;
+
+                card.innerHTML = `
+                    <img src="${prod.image_url}" alt="${prod.name}" class="${isSoldOut ? 'sold-out-img' : ''}">
+                    <div class="game-info">
+                        <h3>${prod.name} <br><span style="font-size: 1rem; color: var(--light-text);">${variant.name}</span></h3>
+                        <p>${prod.description}</p>
+                        <h4 style="color: var(--neon-pink); margin: 10px 0;">$${variant.price} MXN</h4>
+                        ${isSoldOut ? '<h4 class="sold-out-text">AGOTADO</h4>' : `<a href="${waLink}" target="_blank" class="cart-add-btn" style="display:block; text-align:center; text-decoration:none;">Pedir por WhatsApp</a>`}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        } else {
+            // Si no tiene variantes, creamos una sola tarjeta
+            const card = document.createElement('div');
+            card.className = `game-card dynamic-card product-item ${catClass}`;
+            
+            const text = encodeURIComponent(`Hola Zona Arcana, me interesa el producto: ${prod.name}. ¿Está disponible?`);
+            const waLink = `https://wa.me/528442279216?text=${text}`;
+
+            card.innerHTML = `
+                <img src="${prod.image_url}" alt="${prod.name}" class="${isSoldOut ? 'sold-out-img' : ''}">
+                <div class="game-info">
+                    <h3>${prod.name}</h3>
+                    <p>${prod.description}</p>
+                    ${isSoldOut ? '<h4 class="sold-out-text">AGOTADO</h4>' : `<a href="${waLink}" target="_blank" class="cart-add-btn" style="display:block; text-align:center; text-decoration:none;">Pedir por WhatsApp</a>`}
+                </div>
+            `;
+            container.appendChild(card);
+        }
     });
 }
 
@@ -129,86 +145,6 @@ function filterCatalog(categoria, botonClickeado) {
             card.style.display = 'none';
         }
     });
-}
-
-// ==========================================
-// 3. CARRITO DE COMPRAS Y WHATSAPP
-// ==========================================
-
-let cart = [];
-
-// Función para añadir al carrito
-function addToCart(productId) {
-    const prod = allProducts.find(p => p.id === productId);
-    const select = document.getElementById('var-'+productId);
-    const variantIndex = select ? select.value : 0;
-    const variant = prod.variants[variantIndex];
-
-    cart.push({ id: prod.id, name: prod.name, variantName: variant.name, price: variant.price });
-    updateCartUI();
-    
-    // Efecto visual de rebote en el botón del carrito
-    const btnFixed = document.querySelector('.cart-btn-fixed');
-    if(btnFixed) {
-        btnFixed.style.transform = 'scale(1.2)';
-        setTimeout(() => btnFixed.style.transform = 'scale(1)', 200);
-    }
-}
-
-// Actualiza los números y la lista visible dentro del carrito
-function updateCartUI() {
-    const count = document.getElementById('cart-count');
-    if(count) count.innerText = cart.length;
-
-    const itemsContainer = document.getElementById('cart-items');
-    if(!itemsContainer) return;
-
-    itemsContainer.innerHTML = '';
-    let total = 0;
-    cart.forEach((item, index) => {
-        total += item.price;
-        itemsContainer.innerHTML += `
-            <div class="cart-item">
-                <span>${item.name} (${item.variantName})</span>
-                <span>$${item.price} <i class="fas fa-trash cart-delete-icon" onclick="removeFromCart(${index})"></i></span>
-            </div>
-        `;
-    });
-    document.getElementById('cart-total').innerText = total;
-}
-
-// Botón rojo del basurero para eliminar del carrito
-function removeFromCart(index) {
-    cart.splice(index, 1);
-    updateCartUI();
-}
-
-// Abre/Cierra la ventana del carrito
-function toggleCart() {
-    const modal = document.getElementById('cart-modal');
-    const overlay = document.getElementById('cart-overlay');
-    if(modal) {
-        modal.classList.toggle('active');
-        overlay.classList.toggle('active');
-    }
-}
-
-// Envía toda la información recopilada en un mensaje ordenado a WhatsApp
-function sendWhatsApp() {
-    if(cart.length === 0) {
-        alert("El carrito está vacío");
-        return;
-    }
-    
-    let text = "Hola Zona Arcana, me interesa hacer el siguiente pedido:%0A%0A";
-    let total = 0;
-    cart.forEach(item => {
-        text += `- ${item.name} [${item.variantName}] : $${item.price} MXN%0A`;
-        total += item.price;
-    });
-    text += `%0ATotal a pagar: $${total} MXN%0A%0A¿Están disponibles?`;
-    
-    window.open(`https://wa.me/528442279216?text=${text}`, '_blank');
 }
 
 // ==========================================
