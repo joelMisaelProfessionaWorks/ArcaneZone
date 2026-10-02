@@ -185,7 +185,24 @@ footer { background: rgba(13, 13, 13, 0.9); padding: 4rem 5%; }
    12. DISEÑO RESPONSIVO (Móviles)
    ----------------------------------------- */
 @media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.8rem 5%;
+    }
+    .nav-links { 
+        display: flex; 
+        gap: 1.5rem; 
+        font-size: 0.9rem; 
+    }
+    header .cta-btn { 
+        display: none; 
+    }
     .hero { flex-direction: column; text-align: center; padding: 7rem 5% 4rem; }
+    .hero-image { margin-top: 2rem; width: 100%; height: auto; }
+    .mobile-cta { display: inline-block; }
+    .collaborators-socials { gap: 2rem; }
+}
     .hero-image { margin-top: 2rem; width: 100%; height: auto; }
     .nav-links, header .cta-btn { display: none; }
     .mobile-cta { display: inline-block; }
