@@ -168,6 +168,16 @@ function addToCart(btnElement) {
 function updateCartUI() {
     const count = document.getElementById('cart-count');
     if(count) count.innerText = cart.length;
+    
+    const cartFloat = document.getElementById('cart-float');
+    if(cartFloat) {
+        if(cart.length > 0) {
+            cartFloat.style.display = 'flex';
+        } else {
+            cartFloat.style.display = 'none';
+            closeCart(); // Cierra el modal si se vacía
+        }
+    }
 
     const itemsContainer = document.getElementById('cart-items');
     if(!itemsContainer) return;
@@ -180,7 +190,7 @@ function updateCartUI() {
         itemsContainer.innerHTML += `
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">
                 <span style="color: white;">${item.name} <small style="color: gray;">${variantText}</small></span>
-                <span><span style="color: var(--neon-pink); margin-right: 10px;">$${item.price}</span> <i class="fas fa-trash" style="color: red; cursor:pointer;" onclick="removeFromCart(${index})"></i></span>
+                <span><span style="color: var(--neon-pink); margin-right: 10px;">${item.price}</span> <i class="fas fa-trash" style="color: red; cursor:pointer;" onclick="removeFromCart(${index})"></i></span>
             </div>
         `;
     });
