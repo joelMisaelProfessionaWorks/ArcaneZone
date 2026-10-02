@@ -1,86 +1,4 @@
-/**
- * ZONA ARCANA - JAVASCRIPT PRINCIPAL
- * Este archivo contiene toda la lógica de interacción de la página web.
- * Se divide en:
- * 1. Animaciones visuales.
- * 2. Carga dinámica de productos desde Cloudflare D1.
- * 3. Lógica del Carrito y envío a WhatsApp.
- * 4. Lógica del Panel de Administración.
- */
-
-﻿// ==========================================
-// 2. CONEXIÓN HÍBRIDA CON D1 Y FILTROS ORIGINALES
-// ==========================================
-
-let allProducts = [];
-
-if (window.location.href.includes('productos.html')) {
-    loadProductsAndApplyStatus();
-}
-
-async function loadProductsAndApplyStatus() {
-    try {
-        const res = await fetch('https://arcana-backend.joelmisaelleija19.workers.dev/api/productos');
-        if (!res.ok) throw new Error('Error en la API');
-        allProducts = await res.json();
-        
-        const staticCards = document.querySelectorAll('.game-card');
-        staticCards.forEach(card => {
-            const titleElement = card.querySelector('h3');
-            if(titleElement) {
-                const titleText = titleElement.innerText.toLowerCase();
-                const matchingProd = allProducts.find(p => titleText.includes(p.name.toLowerCase()));
-                if(matchingProd && matchingProd.is_active == 0) {
-                    const img = card.querySelector('img');
-                    if(img) img.classList.add('sold-out-img');
-                    
-                    const info = card.querySelector('.game-info');
-                    if(info) {
-                        const existingPrice = info.querySelector('h4');
-                        if(existingPrice) existingPrice.style.display = 'none';
-                        
-                        const agotadoTag = document.createElement('h4');
-                        agotadoTag.className = 'sold-out-text';
-                        agotadoTag.innerText = 'AGOTADO';
-                        info.appendChild(agotadoTag);
-                    }
-                }
-            }
-        });
-    } catch (e) {
-        console.error('Error al conectar con D1', e);
-    }
-}
-
-function filterStreaming(categoria, botonClickeado) {
-    let botones = document.querySelectorAll('.filter-btn');
-    botones.forEach(btn => btn.classList.remove('active'));
-
-    if(botonClickeado) botonClickeado.classList.add('active');
-
-    let cartas = document.querySelectorAll('.streaming-item');
-    cartas.forEach(carta => {
-        if (categoria === 'todas') {
-            carta.style.display = 'block'; 
-        } else if (carta.classList.contains(categoria)) {
-            carta.style.display = 'block'; 
-        } else {
-            carta.style.display = 'none'; 
-        }
-    });
-}
-// ==========================================
-
-// Quitar la pantalla de carga (Loader) al terminar de abrir la web
-window.addEventListener('load', () => {
-    const loader = document.getElementById('loader');
-    if(loader) {
-        loader.style.opacity = '0';
-        loader.style.visibility = 'hidden';
-    }
-});
-
-// Desplazamiento suave (Smooth Scroll) cuando presionas los links del menú
+// smooth scroll behavior
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
         e.preventDefault();
@@ -91,7 +9,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// Animación para que los elementos aparezcan "flotando" cuando scrolleas hacia abajo
+// scroll animations
 const scrollElements = document.querySelectorAll('.feature-card, section:not(#games) .game-card');
 const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -109,101 +27,196 @@ scrollElements.forEach(el => {
     observer.observe(el);
 });
 
-// ==========================================
-// 2. CATÁLOGO DINÁMICO (PRODUCTOS)
-// ==========================================
-
+/* productos.html - Lógica Híbrida Estática/D1 */
 let allProducts = [];
 
-// Detecta si estás en la página de productos para descargarlos de la Base de Datos
-if (document.getElementById('dynamic-products')) {
-    loadProducts();
+if (window.location.href.includes('productos.html')) {
+    loadProductsAndApplyStatus();
 }
 
-// Función que se conecta a Cloudflare D1 y descarga los productos
-async function loadProducts() {
+async function loadProductsAndApplyStatus() {
     try {
-        const res = await fetch("https://arcana-backend.joelmisaelleija19.workers.dev/api/productos");
-        if (!res.ok) throw new Error("Error en la API");
+        const res = await fetch('https://arcana-backend.joelmisaelleija19.workers.dev/api/productos');
+        if (!res.ok) throw new Error('Error en la API');
         allProducts = await res.json();
-    } catch (e) {
-        console.error("Error al cargar productos", e);
-    }
-    renderProducts();
-}
-
-// Función que dibuja las tarjetas HTML basándose en los productos descargados
-function renderProducts() {
-    const container = document.getElementById('dynamic-products');
-    if (!container) return;
-    container.innerHTML = '';
-
-    allProducts.forEach(prod => {
-        const isSoldOut = prod.is_active == 0;
-        const catClass = prod.category ? prod.category.toLowerCase() : 'otra';
-
-        // Si el producto tiene variantes (diferentes precios/tiempos), creamos UNA TARJETA POR CADA VARIANTE
-        if (prod.variants && prod.variants.length > 0) {
-            prod.variants.forEach(variant => {
-                const card = document.createElement('div');
-                card.className = `game-card dynamic-card product-item ${catClass}`;
+        
+        // Solo las cards de streaming
+        const streamingCards = document.querySelectorAll('.streaming-item');
+        streamingCards.forEach(card => {
+            const titleElement = card.querySelector('h3');
+            if(titleElement) {
+                const titleText = titleElement.innerText.toLowerCase();
+                const matchingProd = allProducts.find(p => titleText.includes(p.name.toLowerCase()));
                 
-                // Mensaje directo a WhatsApp para este producto específico
-                const text = encodeURIComponent(`Hola Zona Arcana, me interesa el producto: ${prod.name} [${variant.name}] por $${variant.price} MXN. ¿Está disponible?`);
-                const waLink = `https://wa.me/528442279216?text=${text}`;
+                if(matchingProd && matchingProd.is_active == 0) {
+                    const img = card.querySelector('img');
+                    if(img) img.classList.add('sold-out-img');
+                    
+                    const info = card.querySelector('.game-info');
+                    if(info) {
+                        // Ocultar En stock y Añadir al carrito
+                        const stockText = info.querySelector('.stock-status');
+                        if (stockText) stockText.style.display = 'none';
+                        
+                        const addBtn = info.querySelector('.cart-add-btn');
+                        if (addBtn) addBtn.style.display = 'none';
+                        
+                        const agotadoTag = document.createElement('h4');
+                        agotadoTag.className = 'sold-out-text';
+                        agotadoTag.innerText = 'AGOTADO';
+                        info.appendChild(agotadoTag);
+                    }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Error al conectar con D1', e);
+    }
+}
 
-                card.innerHTML = `
-                    <img src="${prod.image_url}" alt="${prod.name}" class="${isSoldOut ? 'sold-out-img' : ''}">
-                    <div class="game-info">
-                        <h3>${prod.name} <br><span style="font-size: 1rem; color: var(--light-text);">${variant.name}</span></h3>
-                        <p>${prod.description}</p>
-                        <h4 style="color: var(--neon-pink); margin: 10px 0;">$${variant.price} MXN</h4>
-                        ${isSoldOut ? '<h4 class="sold-out-text">AGOTADO</h4>' : `<a href="${waLink}" target="_blank" class="cart-add-btn" style="display:block; text-align:center; text-decoration:none;">Pedir por WhatsApp</a>`}
-                    </div>
-                `;
-                container.appendChild(card);
-            });
+// Filtro para la sección de Streaming
+function filterStreaming(categoria, botonClickeado) {
+    let botones = document.querySelectorAll('.filter-btn');
+    botones.forEach(btn => btn.classList.remove('active'));
+
+    if(botonClickeado) botonClickeado.classList.add('active');
+
+    let cartas = document.querySelectorAll('.streaming-item');
+    cartas.forEach(carta => {
+        if (categoria === 'todas') {
+            carta.style.display = 'block'; 
+        } else if (carta.classList.contains(categoria)) {
+            carta.style.display = 'block'; 
         } else {
-            // Si no tiene variantes, creamos una sola tarjeta
-            const card = document.createElement('div');
-            card.className = `game-card dynamic-card product-item ${catClass}`;
-            
-            const text = encodeURIComponent(`Hola Zona Arcana, me interesa el producto: ${prod.name}. ¿Está disponible?`);
-            const waLink = `https://wa.me/528442279216?text=${text}`;
-
-            card.innerHTML = `
-                <img src="${prod.image_url}" alt="${prod.name}" class="${isSoldOut ? 'sold-out-img' : ''}">
-                <div class="game-info">
-                    <h3>${prod.name}</h3>
-                    <p>${prod.description}</p>
-                    ${isSoldOut ? '<h4 class="sold-out-text">AGOTADO</h4>' : `<a href="${waLink}" target="_blank" class="cart-add-btn" style="display:block; text-align:center; text-decoration:none;">Pedir por WhatsApp</a>`}
-                </div>
-            `;
-            container.appendChild(card);
+            carta.style.display = 'none'; 
         }
     });
 }
 
-// Función para filtrar los productos por categoría
-function filterCatalog(categoria, botonClickeado) {
-    // 1. Quitar estado activo a todos los botones
-    document.querySelectorAll('.filter-container .filter-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    // 2. Poner estado activo al botón presionado
-    botonClickeado.classList.add('active');
+// ==========================================
+// CARRITO DE COMPRAS
+// ==========================================
+let cart = [];
 
-    // 3. Mostrar/Ocultar tarjetas
-    const cards = document.querySelectorAll('.product-item');
-    cards.forEach(card => {
-        if (categoria === 'todas') {
-            card.style.display = 'block';
-        } else if (card.classList.contains(categoria)) {
-            card.style.display = 'block';
-        } else {
-            card.style.display = 'none';
+function extractPrices(priceText) {
+    // Ejemplo 1: "Precio: $75 x mes" -> [{name: "Única", price: 75}]
+    // Ejemplo 2: "1M: $45 MXN | 2M: $65 MXN" -> [{name: "1M", price: 45}, {name: "2M", price: 65}]
+    let options = [];
+    if (priceText.includes('|')) {
+        let parts = priceText.split('|');
+        parts.forEach(part => {
+            let match = part.match(/(.*?):s*\$?(\d+)/);
+            if (match) {
+                options.push({ name: match[1].trim(), price: parseFloat(match[2]) });
+            }
+        });
+    } else {
+        let match = priceText.match(/\$?(\d+)(\.\d+)?/);
+        if (match) {
+            options.push({ name: "Paquete base", price: parseFloat(match[1]) });
         }
+    }
+    return options;
+}
+
+function addToCart(btnElement) {
+    const card = btnElement.closest('.game-card');
+    const title = card.querySelector('h3').innerText;
+    const priceElement = card.querySelector('h4[style*="color: var(--neon-pink)"]');
+    if(!priceElement) return;
+    
+    let priceText = priceElement.innerText;
+    let options = extractPrices(priceText);
+    
+    let selectedOption = options[0];
+    
+    if (options.length > 1) {
+        let promptText = "Este producto tiene varias opciones. Elige el número de la opción que deseas:\n";
+        options.forEach((opt, idx) => {
+            promptText += `${idx + 1}. ${opt.name} - $${opt.price}\n`;
+        });
+        let choice = window.prompt(promptText, "1");
+        if (choice === null) return; // Cancelado
+        let index = parseInt(choice) - 1;
+        if (index >= 0 && index < options.length) {
+            selectedOption = options[index];
+        } else {
+            alert("Opción inválida.");
+            return;
+        }
+    } else if (options.length === 0) {
+        alert("No se pudo leer el precio de este producto.");
+        return;
+    }
+    
+    cart.push({
+        name: title,
+        variant: selectedOption.name,
+        price: selectedOption.price
     });
+    
+    updateCartUI();
+    
+    // Animación del botón flotante
+    const cartFloat = document.getElementById('cart-float');
+    if(cartFloat) {
+        cartFloat.style.transform = 'scale(1.2)';
+        setTimeout(() => cartFloat.style.transform = 'scale(1)', 200);
+    }
+}
+
+function updateCartUI() {
+    const count = document.getElementById('cart-count');
+    if(count) count.innerText = cart.length;
+
+    const itemsContainer = document.getElementById('cart-items');
+    if(!itemsContainer) return;
+
+    itemsContainer.innerHTML = '';
+    let total = 0;
+    cart.forEach((item, index) => {
+        total += item.price;
+        let variantText = item.variant === "Paquete base" ? "" : `(${item.variant})`;
+        itemsContainer.innerHTML += `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">
+                <span style="color: white;">${item.name} <small style="color: gray;">${variantText}</small></span>
+                <span><span style="color: var(--neon-pink); margin-right: 10px;">$${item.price}</span> <i class="fas fa-trash" style="color: red; cursor:pointer;" onclick="removeFromCart(${index})"></i></span>
+            </div>
+        `;
+    });
+    document.getElementById('cart-total').innerText = total;
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartUI();
+}
+
+function openCart() {
+    document.getElementById('cart-modal').style.display = 'flex';
+}
+
+function closeCart() {
+    document.getElementById('cart-modal').style.display = 'none';
+}
+
+function checkoutWhatsApp() {
+    if(cart.length === 0) {
+        alert("El carrito está vacío");
+        return;
+    }
+    
+    let text = "Hola Zona Arcana, me interesa hacer el siguiente pedido:%0A%0A";
+    let total = 0;
+    cart.forEach(item => {
+        let variantText = item.variant === "Paquete base" ? "" : ` [${item.variant}]`;
+        text += `- ${item.name}${variantText} : $${item.price} MXN%0A`;
+        total += item.price;
+    });
+    text += `%0ATotal a pagar: $${total} MXN%0A%0A¿Están disponibles?`;
+    
+    const phone = "528442279216"; // Número solicitado
+    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
 }
 
 // ==========================================
@@ -212,7 +225,6 @@ function filterCatalog(categoria, botonClickeado) {
 
 let adminProducts = [];
 
-// Función del botón de Ingresar en admin.html
 function login() {
     const loginBox = document.getElementById('login-box');
     if(loginBox) {
@@ -222,7 +234,6 @@ function login() {
     }
 }
 
-// Carga productos exclusivamente para dibujarlos en la tabla de admin
 async function loadAdminProducts() {
     try {
         const res = await fetch("https://arcana-backend.joelmisaelleija19.workers.dev/api/productos");
@@ -231,7 +242,6 @@ async function loadAdminProducts() {
     renderAdminTable();
 }
 
-// Dibuja la tabla administrativa con opciones de "Marcar Agotado"
 function renderAdminTable() {
     const tbody = document.querySelector('#admin-table tbody');
     if(!tbody) return;
@@ -253,7 +263,6 @@ function renderAdminTable() {
     });
 }
 
-// Modifica la Base de Datos para establecer un producto como Agotado/Disponible
 async function toggleStatus(id, currentStatus) {
     const newStatus = currentStatus ? 0 : 1;
     try {
