@@ -99,13 +99,11 @@ function filterStreaming(categoria, botonClickeado) {
 let cart = [];
 
 function extractPrices(priceText) {
-    // Ejemplo 1: "Precio: $75 x mes" -> [{name: "Única", price: 75}]
-    // Ejemplo 2: "1M: $45 MXN | 2M: $65 MXN" -> [{name: "1M", price: 45}, {name: "2M", price: 65}]
     let options = [];
     if (priceText.includes('|')) {
         let parts = priceText.split('|');
         parts.forEach(part => {
-            let match = part.match(/(.*?):s*\$?(\d+)/);
+            let match = part.match(/(.*?):\s*\$?(\d+)/);
             if (match) {
                 options.push({ name: match[1].trim(), price: parseFloat(match[2]) });
             }
