@@ -209,3 +209,206 @@ footer { background: rgba(13, 13, 13, 0.9); padding: 4rem 5%; }
     .mobile-cta { display: inline-block; }
     .collaborators-socials { gap: 2rem; }
 }
+
+
+/* -----------------------------------------
+   13. COMPONENTES Y UTILIDADES NUEVAS (Carrito, Modales, Botones)
+   ----------------------------------------- */
+.games-container {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    padding: 0 5%;
+}
+.game-price {
+    color: var(--neon-pink);
+    margin-top: 10px;
+}
+.stock-status {
+    color: #00ff00;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+.stock-status.agotado {
+    color: #ff0000;
+}
+.cart-add-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 5px;
+    background: transparent;
+    border: 1px solid var(--neon-pink);
+    color: var(--neon-pink);
+    cursor: pointer;
+    transition: 0.3s;
+}
+.cart-add-btn:hover {
+    background: var(--neon-pink);
+    color: var(--dark-bg);
+}
+
+/* Float Cart */
+#cart-float {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--neon-pink);
+    color: white;
+    padding: 15px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--neon-pink);
+    z-index: 1000;
+    display: none; /* controlled by JS */
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+#cart-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: white;
+    color: var(--neon-pink);
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Modals */
+.modal-overlay {
+    display: none; /* controlled by JS */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 1001;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background: var(--dark-bg);
+    border: 2px solid var(--neon-pink);
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    text-align: left;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.modal-title {
+    color: var(--neon-pink);
+    font-size: 1.5rem;
+}
+#variant-title {
+    color: var(--neon-blue);
+}
+.modal-close {
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: white;
+}
+.modal-close:hover {
+    color: var(--neon-pink);
+}
+
+/* Cart Items */
+.cart-items-container {
+    margin-bottom: 20px;
+}
+.cart-item-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 5px;
+}
+.cart-item-name {
+    color: white;
+}
+.cart-item-variant {
+    color: gray;
+    font-size: 0.85em;
+    margin-left: 5px;
+}
+.cart-item-price {
+    color: var(--neon-pink);
+    margin-right: 10px;
+}
+.cart-item-delete {
+    color: #ff4444;
+    cursor: pointer;
+}
+.cart-item-delete:hover {
+    color: #ff0000;
+}
+.cart-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+}
+.cart-total-price {
+    color: var(--neon-pink);
+}
+.whatsapp-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    background: #25D366;
+    color: white;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: 0.3s;
+}
+.whatsapp-btn:hover {
+    background: #1eb955;
+}
+
+/* Variant Options */
+.variant-options-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.variant-btn {
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--neon-pink);
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: 0.3s;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+}
+.variant-btn:hover {
+    background: var(--neon-pink);
+    color: var(--dark-bg);
+}
+
+.cart-float-hidden { display: none !important; }
+.cart-float-visible { display: flex !important; }
+
+.spacer { padding-top: 100px; background: var(--dark-bg); }
+
+.cart-icon { font-size: 1.5rem; }

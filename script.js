@@ -151,7 +151,7 @@ function showVariantModal(title, options) {
         };
         container.appendChild(btn);
     });
-    document.getElementById('variant-modal').style.display = 'flex';
+    document.getElementById("variant-modal").style.display = "flex";
 }
 
 function closeVariantModal() {
@@ -179,9 +179,9 @@ function updateCartUI() {
     const cartFloat = document.getElementById('cart-float');
     if(cartFloat) {
         if(cart.length > 0) {
-            cartFloat.style.display = 'flex';
+            cartFloat.className = "cart-float-visible";
         } else {
-            cartFloat.style.display = 'none';
+            cartFloat.className = "cart-float-hidden";
             closeCart(); // Cierra el modal si se vacía
         }
     }
@@ -195,9 +195,9 @@ function updateCartUI() {
         total += item.price;
         let variantText = item.variant === "Paquete base" ? "" : `(${item.variant})`;
         itemsContainer.innerHTML += `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">
-                <span style="color: white;">${item.name} <small style="color: gray;">${variantText}</small></span>
-                <span><span style="color: var(--neon-pink); margin-right: 10px;">${item.price}</span> <i class="fas fa-trash" style="color: red; cursor:pointer;" onclick="removeFromCart(${index})"></i></span>
+            <div class="cart-item-row">
+                <span class="cart-item-name">${item.name} <span class="cart-item-variant">${variantText}</span></span>
+                <span><span class="cart-item-price">${item.price}</span> <i class="fas fa-trash cart-item-delete" onclick="removeFromCart(${index})"></i></span>
             </div>
         `;
     });
