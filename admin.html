@@ -154,6 +154,11 @@
                     <i class="fas fa-ban"></i> Todo Agotado
                 </button>
                 
+                <!-- Configuración WhatsApp -->
+                <button class="action-btn" onclick="openWhatsAppConfigModal()" style="background: rgba(37, 211, 102, 0.15); border: 1px solid #25D366; color: #25D366;" title="Configurar plantilla y número de WhatsApp">
+                    <i class="fab fa-whatsapp"></i> Mensaje WhatsApp
+                </button>
+                
                 <!-- Respaldo JSON -->
                 <button class="action-btn" onclick="exportBackupJSON()" style="background: rgba(0, 217, 255, 0.15); border: 1px solid var(--neon-blue); color: var(--neon-blue);" title="Descargar copia de seguridad JSON">
                     <i class="fas fa-download"></i> Respaldar
@@ -403,6 +408,60 @@
         </div>
     </div>
 
+    <!-- ========================================================
+         MODAL 4: CONFIGURACIÓN DE PLANTILLA DE WHATSAPP
+         ======================================================== -->
+    <div id="whatsapp-config-modal" class="admin-modal-overlay">
+        <div class="admin-modal-box" style="max-width: 650px;">
+            <div class="admin-modal-header">
+                <h2><i class="fab fa-whatsapp" style="color: #25D366;"></i> Configurar Mensaje y Número de WhatsApp</h2>
+                <i class="fas fa-times admin-modal-close" onclick="closeWhatsAppConfigModal()"></i>
+            </div>
+            
+            <form onsubmit="event.preventDefault(); saveWhatsAppConfigFromModal();">
+                <div class="admin-form-group">
+                    <label for="wa-cfg-phone">Número de WhatsApp (con lada de país, sin signos ni espacios):</label>
+                    <input type="text" id="wa-cfg-phone" class="admin-input" placeholder="Ej: 528442279216" required>
+                    <small style="color: #888; font-size: 0.8rem; margin-top: 4px; display: block;">
+                        Formato para México: <strong>52</strong> seguido de los 10 dígitos (ej: 528442279216).
+                    </small>
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="wa-cfg-template">Plantilla del Mensaje de Pedido:</label>
+                    <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 6px;">
+                        Variables dinámicas: 
+                        <code style="background: rgba(0,217,255,0.1); color: var(--neon-blue); padding: 2px 6px; border-radius: 4px;">{productos}</code> (lista de productos solicitados) y 
+                        <code style="background: rgba(0,217,255,0.1); color: var(--neon-blue); padding: 2px 6px; border-radius: 4px;">{total}</code> (suma total calculada).
+                    </div>
+                    <textarea id="wa-cfg-template" rows="7" class="admin-textarea" style="font-family: monospace; font-size: 0.9rem;" oninput="updateWhatsAppConfigPreview()" required></textarea>
+                </div>
+
+                <div class="admin-form-group">
+                    <label>Vista Previa en Vivo (Simulación de Chat):</label>
+                    <div id="wa-preview-bubble" style="background: #0b141a; border: 1px solid #25D366; border-radius: 8px; padding: 12px; color: #e9edef; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 0.9rem; white-space: pre-wrap; line-height: 1.4; max-height: 160px; overflow-y: auto;">
+                    </div>
+                </div>
+
+                <div class="admin-modal-footer" style="flex-wrap: wrap; gap: 10px;">
+                    <button type="button" class="action-btn" onclick="restoreDefaultWhatsAppConfig()" style="background: rgba(255, 68, 68, 0.15); border: 1px solid #ff4444; color: #ff4444;" title="Restablecer mensaje predeterminado original">
+                        <i class="fas fa-undo"></i> Restaurar Original
+                    </button>
+                    <button type="button" class="action-btn" onclick="testSendWhatsAppConfig()" style="background: rgba(0, 217, 255, 0.15); border: 1px solid var(--neon-blue); color: var(--neon-blue);" title="Abrir WhatsApp para enviar un mensaje de prueba con este formato">
+                        <i class="fab fa-whatsapp"></i> Probar Envío
+                    </button>
+                    <div style="flex: 1;"></div>
+                    <button type="button" class="action-btn" onclick="closeWhatsAppConfigModal()" style="background: rgba(255,255,255,0.1); color: white;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="action-btn" style="background: #25D366; color: black; font-weight: bold; border: none; padding: 10px 20px;">
+                        <i class="fas fa-save"></i> Guardar Mensaje
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast de Notificaciones Cyber HUD -->
     <div id="admin-toast">
         <i class="fas fa-check-circle" style="color: #00ff80; font-size: 1.2rem;"></i>
@@ -410,6 +469,6 @@
     </div>
 
     <!-- Script Principal con la lógica de Productos y Administración -->
-    <script src="script.js"></script>
+    <script src="script.js?v=2.2"></script>
 </body>
 </html>

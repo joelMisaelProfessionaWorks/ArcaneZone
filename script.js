@@ -398,6 +398,30 @@ const ARCANA_IMAGES = [
     { file: "Arcana_Logo.png", name: "Logo Arcana (Predeterminado)" }
 ];
 
+const DEFAULT_WHATSAPP_CONFIG = {
+    phone: "528442279216",
+    template: "Hola Zona Arcana, me interesa hacer el siguiente pedido:\n\n{productos}\n\nTotal a pagar: ${total} MXN\n\n¿Están disponibles?"
+};
+
+function getWhatsAppConfig() {
+    try {
+        if (typeof localStorage === 'undefined') return DEFAULT_WHATSAPP_CONFIG;
+        const saved = localStorage.getItem('arcana_whatsapp_config');
+        if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return DEFAULT_WHATSAPP_CONFIG;
+}
+
+function saveWhatsAppConfig(phone, template) {
+    if (typeof localStorage === 'undefined') return;
+    const config = {
+        phone: (phone || "528442279216").trim(),
+        template: template || DEFAULT_WHATSAPP_CONFIG.template
+    };
+    localStorage.setItem('arcana_whatsapp_config', JSON.stringify(config));
+    notifyStorefrontUpdate();
+}
+
 // Obtiene los overrides guardados por el admin
 function getProductOverrides() {
     try {
@@ -415,6 +439,13 @@ function getCustomCards() {
         return JSON.parse(localStorage.getItem('arcana_custom_cards') || '[]');
     } catch(e) {
         return [];
+    }
+}
+
+// Notifica a todas las pestañas de una actualización
+function notifyStorefrontUpdate() {
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('arcana_version', Date.now().toString());
     }
 }
 
@@ -444,30 +475,23 @@ function getAllCatalogProducts(includeDeleted = true) {
 }
 
 // =========================================================================
-// 4. LÓGICA DE TIENDA: productos.html
+// 4. LÓGICA DE TIENDA: productos.html (Sincronización en Tiempo Real)
 // =========================================================================
-if (typeof window !== 'undefined') {
-    if (window.location.pathname.includes('productos.html') || window.location.href.includes('productos.html')) {
-        document.addEventListener('DOMContentLoaded', () => {
-            applyStorefrontCustomizations();
-        });
-        if (document.readyState === 'interactive' || document.readyState === 'complete') {
-            applyStorefrontCustomizations();
-        }
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'arcana_product_overrides' || e.key === 'arcana_custom_cards') {
-                applyStorefrontCustomizations();
-            }
-        });
-    }
-}
+let lastStorefrontStamp = null;
 
 function applyStorefrontCustomizations() {
     if (typeof document === 'undefined') return;
+
+    // Solo actuar si existen cartas en el DOM o estamos en productos
+    const cards = document.querySelectorAll('.game-card[data-id]');
+    if (cards.length === 0 && !document.querySelector('.streaming-grid') && !document.querySelector('.games')) {
+        return;
+    }
+
     const overrides = getProductOverrides();
 
     // 1. Aplicar modificaciones a cartas estáticas existentes por su ID exacto
-    document.querySelectorAll('.game-card[data-id]').forEach(card => {
+    cards.forEach(card => {
         const id = card.getAttribute('data-id');
         const custom = overrides[id];
         
@@ -476,7 +500,7 @@ function applyStorefrontCustomizations() {
             card.style.display = 'none';
             return;
         } else {
-            // Si estaba oculta y no es un filtro de streaming oculto, restaurarla
+            // Si estaba oculta por eliminación previa pero fue restaurada
             if (card.style.display === 'none' && !card.classList.contains('streaming-item')) {
                 card.style.display = 'block';
             }
@@ -485,19 +509,27 @@ function applyStorefrontCustomizations() {
         if (custom) {
             if (custom.name !== undefined) {
                 const titleEl = card.querySelector('h3');
-                if (titleEl) titleEl.innerText = custom.name;
+                if (titleEl && titleEl.innerText !== custom.name) {
+                    titleEl.innerText = custom.name;
+                }
             }
             if (custom.description !== undefined) {
                 const descP = card.querySelector('.game-info > p:not(.stock-status)');
-                if (descP) descP.innerText = custom.description;
+                if (descP && descP.innerText !== custom.description) {
+                    descP.innerText = custom.description;
+                }
             }
             if (custom.price !== undefined) {
                 const priceH4 = card.querySelector('.game-info > h4:not(.sold-out-text)');
-                if (priceH4) priceH4.innerText = custom.price;
+                if (priceH4 && priceH4.innerText !== custom.price) {
+                    priceH4.innerText = custom.price;
+                }
             }
             if (custom.image !== undefined && custom.image) {
                 const img = card.querySelector('img');
-                if (img) img.src = custom.image;
+                if (img && img.getAttribute('src') !== custom.image) {
+                    img.src = custom.image;
+                }
             }
             if (custom.inStock !== undefined) {
                 card.setAttribute('data-stock', custom.inStock ? 'En stock' : 'Agotado');
@@ -635,7 +667,7 @@ function renderCustomCardInStore(cardData) {
         <div class="game-info">
             <h3>${cardData.name}</h3>
             <p>${cardData.description || ''}</p>
-            <p class="stock-status" style="color: ${cardData.inStock ? '#00ff00' : '#ff4444'}; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">${cardData.inStock ? 'En stock' : 'Agotado'}</p>
+            <p class="stock-status" style="color: ${cardData.inStock ? '#00ff80' : '#ff4444'}; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">${cardData.inStock ? 'En stock' : 'Agotado'}</p>
             <h4 style="color: var(--neon-pink); margin-top: 10px;">${cardData.price}</h4>
             <button class="cart-add-btn" onclick="addToCart(this)" style="margin-top: 10px; width: 100%; padding: 8px; border-radius: 5px; background: transparent; border: 1px solid var(--neon-pink); color: var(--neon-pink); cursor: pointer; ${cardData.inStock ? '' : 'display: none;'}">Añadir al carrito</button>
             ${!cardData.inStock ? '<h4 class="sold-out-text" style="color: #ff4444; margin-top: 10px; font-weight: bold;">AGOTADO</h4>' : ''}
@@ -643,6 +675,34 @@ function renderCustomCardInStore(cardData) {
     `;
 
     container.appendChild(newCard);
+}
+
+// Inicializador de Sincronización Continua e Inmediata
+if (typeof window !== 'undefined') {
+    // 1. Ejecutar de inmediato al cargar el script
+    applyStorefrontCustomizations();
+    
+    // 2. Al estar listo el DOM
+    document.addEventListener('DOMContentLoaded', applyStorefrontCustomizations);
+    window.addEventListener('load', applyStorefrontCustomizations);
+    
+    // 3. Al dispararse evento storage de otra pestaña
+    window.addEventListener('storage', (e) => {
+        applyStorefrontCustomizations();
+    });
+
+    // 4. Polling ultra-ligero cada 400ms: garantiza sincronización instantánea entre pestañas
+    // incluso en navegadores que bloquean eventos storage en rutas locales (file:///)
+    setInterval(() => {
+        if (typeof localStorage === 'undefined') return;
+        const currentStamp = (localStorage.getItem('arcana_version') || '') + 
+                             (localStorage.getItem('arcana_product_overrides') || '') + 
+                             (localStorage.getItem('arcana_custom_cards') || '');
+        if (currentStamp !== lastStorefrontStamp) {
+            lastStorefrontStamp = currentStamp;
+            applyStorefrontCustomizations();
+        }
+    }, 400);
 }
 
 // Filtro de Streaming
@@ -653,8 +713,14 @@ function filterStreaming(categoria, botonClickeado) {
 
     if(botonClickeado) botonClickeado.classList.add('active');
 
+    const overrides = getProductOverrides();
     let cartas = document.querySelectorAll('.streaming-item');
     cartas.forEach(carta => {
+        const id = carta.getAttribute('data-id');
+        if (overrides[id] && overrides[id].isDeleted) {
+            carta.style.display = 'none';
+            return;
+        }
         if (categoria === 'todas') {
             carta.style.display = 'block'; 
         } else if (carta.classList.contains(categoria)) {
@@ -666,7 +732,7 @@ function filterStreaming(categoria, botonClickeado) {
 }
 
 // =========================================================================
-// 5. CARRITO DE COMPRAS Y WHATSAPP
+// 5. CARRITO DE COMPRAS Y PEDIDO A WHATSAPP
 // =========================================================================
 let cart = [];
 
@@ -805,23 +871,33 @@ function closeCart() {
     if (modal) modal.style.display = 'none';
 }
 
+// Enviar pedido a WhatsApp usando la plantilla y número configurados en Admin
 function checkoutWhatsApp() {
     if(cart.length === 0) {
         alert("El carrito está vacío");
         return;
     }
     
-    let text = "Hola Zona Arcana, me interesa hacer el siguiente pedido:%0A%0A";
+    const config = getWhatsAppConfig();
+    let productLines = [];
     let total = 0;
+    
     cart.forEach(item => {
         let variantText = item.variant === "Paquete base" ? "" : ` [${item.variant}]`;
-        text += `- ${item.name}${variantText} : $${item.price} MXN%0A`;
+        productLines.push(`- ${item.name}${variantText} : $${item.price} MXN`);
         total += item.price;
     });
-    text += `%0ATotal a pagar: $${total} MXN%0A%0A¿Están disponibles?`;
-    
-    const phone = "528442279216";
-    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+
+    const productsText = productLines.join("\n");
+    let template = config.template || DEFAULT_WHATSAPP_CONFIG.template;
+
+    // Reemplazo de variables
+    let finalMsg = template.replace(/{productos}/gi, productsText);
+    finalMsg = finalMsg.replace(/{total}/gi, total.toString());
+
+    const phone = (config.phone || "528442279216").replace(/[^0-9]/g, '');
+    const encoded = encodeURIComponent(finalMsg);
+    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
 }
 
 // =========================================================================
@@ -918,7 +994,7 @@ let adminCatalog = [];
 let currentFilterCategory = 'todas';
 let currentFilterStock = 'todos';
 let currentSearchQuery = '';
-let currentViewMode = 'grid'; // 'grid' | 'table'
+let currentViewMode = 'grid';
 
 if (typeof window !== 'undefined') {
     if (window.location.pathname.includes('admin.html') || window.location.href.includes('admin.html')) {
@@ -1023,7 +1099,6 @@ function renderCategoryChips() {
     const chipsContainer = document.getElementById('admin-category-chips');
     if (!chipsContainer) return;
 
-    // Calcular categorías y sus conteos
     const activeProducts = adminCatalog.filter(p => !p.isDeleted);
     const deletedCount = adminCatalog.filter(p => p.isDeleted).length;
 
@@ -1047,7 +1122,6 @@ function renderCategoryChips() {
         `;
     });
 
-    // Chip de Papelera si hay productos eliminados
     html += `
         <button class="admin-chip ${currentFilterCategory === 'papelera' ? 'active' : ''}" style="${deletedCount > 0 ? 'border-color: #ff4444; color: #ff8888;' : 'opacity: 0.6;'}" onclick="selectCategoryChip('papelera')">
             <i class="fas fa-trash-alt"></i> Papelera <span class="chip-count" style="background: rgba(255, 68, 68, 0.4); color: white;">${deletedCount}</span>
@@ -1105,7 +1179,6 @@ function filterAdminProducts() {
 
 function getFilteredList() {
     return adminCatalog.filter(p => {
-        // Filtro especial de Papelera
         if (currentFilterCategory === 'papelera') {
             if (!p.isDeleted) return false;
         } else {
@@ -1326,6 +1399,7 @@ function toggleProductStock(id) {
         localStorage.setItem('arcana_product_overrides', JSON.stringify(overrides));
     }
 
+    notifyStorefrontUpdate();
     renderAdminViews();
     updateAdminKPIs();
     showAdminToast(`Stock de "${prod.name}" cambiado a: ${prod.inStock ? 'En stock' : 'Agotado'}`);
@@ -1365,6 +1439,7 @@ function bulkSetCategoryStock(inStock) {
     localStorage.setItem('arcana_product_overrides', JSON.stringify(overrides));
     localStorage.setItem('arcana_custom_cards', JSON.stringify(customCards));
 
+    notifyStorefrontUpdate();
     renderAdminViews();
     updateAdminKPIs();
     showAdminToast(`${targetProducts.length} productos marcados como ${inStock ? 'En stock' : 'Agotado'}`);
@@ -1465,6 +1540,7 @@ function saveCardEdit(e) {
         localStorage.setItem('arcana_product_overrides', JSON.stringify(overrides));
     }
 
+    notifyStorefrontUpdate();
     closeEditModal();
     renderAdminViews();
     updateAdminKPIs();
@@ -1604,6 +1680,7 @@ function saveNewCard(e) {
     customCards.push(newCardObj);
     localStorage.setItem('arcana_custom_cards', JSON.stringify(customCards));
 
+    notifyStorefrontUpdate();
     closeAddModal();
     loadAdminCatalog();
     showAdminToast(`Nueva carta "${name}" agregada a la tienda`);
@@ -1635,6 +1712,7 @@ function deleteCard(id) {
         localStorage.setItem('arcana_product_overrides', JSON.stringify(overrides));
     }
 
+    notifyStorefrontUpdate();
     loadAdminCatalog();
     showAdminToast(`Carta "${name}" enviada a la papelera`);
 }
@@ -1661,11 +1739,75 @@ function restoreCard(id) {
         }
     }
 
+    notifyStorefrontUpdate();
     loadAdminCatalog();
     showAdminToast(`Carta "${name}" restaurada a la tienda`);
 }
 
-// 16. Simulador de Pedido de WhatsApp
+// 16. Configuración de WhatsApp y Mensaje Personalizado
+function openWhatsAppConfigModal() {
+    playCyberSound('click');
+    const config = getWhatsAppConfig();
+    const phoneInput = document.getElementById('wa-cfg-phone');
+    const templateInput = document.getElementById('wa-cfg-template');
+    if (phoneInput) phoneInput.value = config.phone || "528442279216";
+    if (templateInput) templateInput.value = config.template || DEFAULT_WHATSAPP_CONFIG.template;
+
+    updateWhatsAppConfigPreview();
+    const modal = document.getElementById('whatsapp-config-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeWhatsAppConfigModal() {
+    playCyberSound('click');
+    const modal = document.getElementById('whatsapp-config-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function updateWhatsAppConfigPreview() {
+    const templateInput = document.getElementById('wa-cfg-template');
+    const previewBubble = document.getElementById('wa-preview-bubble');
+    if (!templateInput || !previewBubble) return;
+
+    let text = templateInput.value;
+    const sampleProducts = "- Netflix - Perfil : $85 MXN\n- Spotify premium De 1 mes : $70 MXN";
+    const sampleTotal = "155";
+
+    let preview = text.replace(/{productos}/gi, sampleProducts);
+    preview = preview.replace(/{total}/gi, sampleTotal);
+
+    previewBubble.innerText = preview;
+}
+
+function restoreDefaultWhatsAppConfig() {
+    const phoneInput = document.getElementById('wa-cfg-phone');
+    const templateInput = document.getElementById('wa-cfg-template');
+    if (phoneInput) phoneInput.value = DEFAULT_WHATSAPP_CONFIG.phone;
+    if (templateInput) templateInput.value = DEFAULT_WHATSAPP_CONFIG.template;
+    updateWhatsAppConfigPreview();
+    playCyberSound('click');
+}
+
+function saveWhatsAppConfigFromModal() {
+    playCyberSound('save');
+    const phone = document.getElementById('wa-cfg-phone').value.trim();
+    const template = document.getElementById('wa-cfg-template').value.trim();
+
+    saveWhatsAppConfig(phone, template);
+    closeWhatsAppConfigModal();
+    showAdminToast('Configuración de WhatsApp guardada con éxito');
+}
+
+function testSendWhatsAppConfig() {
+    playCyberSound('save');
+    const phone = document.getElementById('wa-cfg-phone').value.trim().replace(/[^0-9]/g, '');
+    const previewBubble = document.getElementById('wa-preview-bubble');
+    if (!previewBubble) return;
+    const encoded = encodeURIComponent(previewBubble.innerText);
+    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
+}
+
+// Simulador rápido por producto individual
 function openWhatsAppSimulator(id) {
     playCyberSound('click');
     const prod = adminCatalog.find(p => p.id === id);
@@ -1676,8 +1818,12 @@ function openWhatsAppSimulator(id) {
     const textEl = document.getElementById('wa-sim-text');
     if (!modal) return;
 
+    const config = getWhatsAppConfig();
+    let template = config.template || DEFAULT_WHATSAPP_CONFIG.template;
+    let sampleMsg = template.replace(/{productos}/gi, `- ${prod.name} : ${prod.price}`);
+    sampleMsg = sampleMsg.replace(/{total}/gi, prod.price);
+
     if (titleEl) titleEl.innerText = prod.name;
-    const sampleMsg = `Hola Zona Arcana, me interesa hacer el siguiente pedido:\n\n- ${prod.name} : ${prod.price}\n\nTotal a pagar: ${prod.price}\n\n¿Están disponibles?`;
     if (textEl) textEl.value = sampleMsg;
 
     modal.style.display = 'flex';
@@ -1691,9 +1837,10 @@ function closeWhatsAppSimulator() {
 
 function testSendWhatsAppSim() {
     playCyberSound('save');
+    const config = getWhatsAppConfig();
     const textEl = document.getElementById('wa-sim-text');
     if (!textEl) return;
-    const phone = "528442279216";
+    const phone = (config.phone || "528442279216").replace(/[^0-9]/g, '');
     const encoded = encodeURIComponent(textEl.value);
     window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
 }
@@ -1702,10 +1849,11 @@ function testSendWhatsAppSim() {
 function exportBackupJSON() {
     playCyberSound('save');
     const data = {
-        version: "1.0",
+        version: "2.0",
         date: new Date().toISOString(),
         productOverrides: getProductOverrides(),
-        customCards: getCustomCards()
+        customCards: getCustomCards(),
+        whatsappConfig: getWhatsAppConfig()
     };
     const jsonStr = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -1732,6 +1880,10 @@ function importBackupJSON(fileInput) {
             if (data.customCards) {
                 localStorage.setItem('arcana_custom_cards', JSON.stringify(data.customCards));
             }
+            if (data.whatsappConfig) {
+                localStorage.setItem('arcana_whatsapp_config', JSON.stringify(data.whatsappConfig));
+            }
+            notifyStorefrontUpdate();
             playCyberSound('save');
             loadAdminCatalog();
             showAdminToast('Copia de seguridad restaurada con éxito');
@@ -1751,6 +1903,8 @@ function resetToDefaults() {
     playCyberSound('delete');
     localStorage.removeItem('arcana_product_overrides');
     localStorage.removeItem('arcana_custom_cards');
+    localStorage.removeItem('arcana_whatsapp_config');
+    notifyStorefrontUpdate();
     loadAdminCatalog();
     showAdminToast('Catálogo restablecido a valores originales');
 }
@@ -1774,9 +1928,13 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         DEFAULT_PRODUCTS,
         ARCANA_IMAGES,
+        DEFAULT_WHATSAPP_CONFIG,
+        getWhatsAppConfig,
+        saveWhatsAppConfig,
         extractPrices,
         getAllCatalogProducts,
         getProductOverrides,
-        getCustomCards
+        getCustomCards,
+        applyStorefrontCustomizations
     };
 }
