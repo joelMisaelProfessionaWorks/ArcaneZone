@@ -1191,8 +1191,8 @@ let adminCatalog = [];
 function login() {
     initAudio();
     const passInput = document.getElementById('admin-pass');
-    const pass = passInput ? passInput.value : '';
-    if (pass === 'arcana2026' || pass === '') {
+    const pass = passInput ? passInput.value.trim() : '';
+    if (pass === '1bibidi$babidiDavidput0') {
         playCyberSound('save');
         const loginBox = document.getElementById('login-box');
         const dashboard = document.getElementById('dashboard');
@@ -1210,7 +1210,7 @@ function login() {
         showAdminToast('Sesión iniciada. Bienvenido al Terminal Arcana.');
     } else {
         playCyberSound('delete');
-        alert('Contraseña incorrecta. (Pista: usa arcana2026 o déjala vacía).');
+        alert('Contraseña incorrecta. Acceso denegado.');
     }
 }
 
