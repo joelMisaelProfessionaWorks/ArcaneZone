@@ -3,99 +3,101 @@
 <head>
     <!-- Metadatos y Estilos Globales -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
     <title>Arcana - Panel de Administración Cyberpunk</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.0/css/all.min.css" integrity="sha512-ApSLB1Pd3/bZN8fWB/RG9YhN/7bd9Hkf3AGaE2mPfebjrxagjuBtx2GcgdqIlJkUzwylBo61r9Xa9NmgBI0swA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.4">
 </head>
 <body>
     <!-- 1. Encabezado del Panel Cyberpunk -->
-    <header>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <div class="logo">Zona Arcana // Admin Hub</div>
+    <header class="admin-header">
+        <div class="admin-brand">
+            <div class="logo">Zona Arcana <span class="admin-hub-badge">// Admin Hub</span></div>
             <div class="neon-badge-pulse" style="display: none;" id="header-pulse">
                 <i class="fas fa-satellite-dish"></i> EN LÍNEA
             </div>
         </div>
-        <nav class="nav-links" style="align-items: center;">
-            <button id="audio-toggle-btn" class="audio-toggle-btn active" onclick="toggleSound()" title="Activar/Desactivar efectos de sonido de la interfaz">
-                <i class="fas fa-volume-up"></i> Sonido: ON
+        <nav class="nav-links admin-nav-links">
+            <button id="audio-toggle-btn" class="audio-toggle-btn active" onclick="toggleSound()" title="Activar/Desactivar efectos de sonido">
+                <i class="fas fa-volume-up"></i> <span class="nav-text">Sonido: ON</span>
             </button>
-            <button onclick="openSyncStorefront()" class="action-btn" style="background: linear-gradient(45deg, rgba(0,217,255,0.2), rgba(0,255,128,0.25)); border: 1px solid #00ff80; color: #00ff80; font-weight: bold; padding: 6px 14px; cursor: pointer;" title="Abrir y sincronizar la tienda en vivo inmediatamente">
-                <i class="fas fa-rocket"></i> Ver Tienda Sincronizada
+            <button onclick="openSyncStorefront()" class="action-btn btn-open-sync" title="Abrir y sincronizar la tienda en vivo inmediatamente">
+                <i class="fas fa-rocket"></i> <span class="nav-text">Ver Tienda</span>
             </button>
-            <a href="index.html" target="_blank" style="color: #aaa; text-decoration: none;">Inicio</a>
-            <button onclick="logout()" class="action-btn delete-btn" id="logout-btn" style="display: none; padding: 5px 12px;">
-                <i class="fas fa-sign-out-alt"></i> Salir
+            <a href="index.html" target="_blank" class="admin-nav-link" title="Ir a Inicio">
+                <i class="fas fa-home"></i> <span class="nav-text">Inicio</span>
+            </a>
+            <button onclick="logout()" class="action-btn delete-btn admin-logout-btn" id="logout-btn" style="display: none;" title="Cerrar sesión">
+                <i class="fas fa-sign-out-alt"></i> <span class="nav-text">Salir</span>
             </button>
         </nav>
     </header>
 
     <!-- 2. Caja de Autenticación (Login) -->
     <div class="admin-container login-card" id="login-box">
-        <i class="fas fa-shield-virus" style="font-size: 3.5rem; color: var(--neon-blue); margin-bottom: 15px; text-shadow: 0 0 20px var(--neon-blue);"></i>
-        <h2 style="letter-spacing: 1px;">ACCESO AL SISTEMA</h2>
-        <p style="color: #aaa; font-size: 0.95rem; margin-top: 8px;">Control total de inventario individual, precios, descripciones y cartas en tiempo real.</p>
+        <i class="fas fa-shield-virus login-icon"></i>
+        <h2>ACCESO AL SISTEMA</h2>
+        <p class="login-subtext">Control total de inventario individual, precios, descripciones y cartas en tiempo real.</p>
         
-        <div style="margin: 25px 0;">
-            <input type="password" id="admin-pass" placeholder="Ingresa tu clave de acceso (ej: arcana2026)" class="admin-input" style="width: 100%; text-align: center; font-size: 1.1rem; letter-spacing: 2px;" onkeyup="if(event.key==='Enter') login()">
+        <div class="login-input-group">
+            <input type="password" id="admin-pass" placeholder="Ingresa tu clave de acceso (ej: arcana2026)" class="admin-input login-input" onkeyup="if(event.key==='Enter') login()">
         </div>
         
-        <button class="cta-btn" onclick="login()" style="width: 100%; font-size: 1.1rem; padding: 12px; background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple)); border: none; color: black; font-weight: bold; cursor: pointer;">
+        <button class="cta-btn login-submit-btn" onclick="login()">
             <i class="fas fa-terminal"></i> INGRESAR AL PANEL
         </button>
-        <p style="margin-top: 15px; font-size: 0.8rem; color: #777;">* Presiona Ingresar directamente o escribe arcana2026.</p>
+        <p class="login-help-text">* Presiona Ingresar directamente o escribe arcana2026.</p>
     </div>
 
     <!-- 3. Panel de Control del Inventario (Dashboard) -->
     <div class="admin-container" id="dashboard" style="display: none;">
         
         <!-- Encabezado del Dashboard -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
-            <div>
-                <h1 style="color: var(--neon-blue); font-size: 2.2rem; text-shadow: 0 0 12px rgba(0, 217, 255, 0.4); display: flex; align-items: center; gap: 12px;">
+        <div class="admin-dash-header">
+            <div class="admin-dash-title-group">
+                <h1 class="admin-dash-title">
                     <i class="fas fa-terminal"></i> Terminal de Inventario Arcana
                 </h1>
-                <p style="color: #bbb; font-size: 0.95rem; margin-top: 4px;">
+                <p class="admin-dash-subtitle">
                     Gestiona individualmente cada tarjeta (SmartFit, Spotify, Streaming, etc.), actualiza precios, descripciones o crea nuevas categorías.
                 </p>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="cta-btn" onclick="openAddCardModal()" style="background: linear-gradient(45deg, var(--neon-pink), var(--neon-purple)); border: none; color: white; box-shadow: 0 0 15px rgba(255, 0, 255, 0.4); font-weight: bold; padding: 10px 18px;">
+            <div class="admin-dash-actions">
+                <button class="cta-btn admin-add-btn" onclick="openAddCardModal()">
                     <i class="fas fa-plus-circle"></i> + Agregar Nueva Carta
                 </button>
             </div>
         </div>
 
         <!-- Barra de Estado de Sincronización en Vivo -->
-        <div style="background: rgba(0, 217, 255, 0.08); border: 1px solid rgba(0, 217, 255, 0.3); border-radius: 12px; padding: 12px 18px; margin-bottom: 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="admin-sync-banner">
+            <div class="admin-sync-info">
                 <span class="hud-led led-green" style="animation: neonPulse 1.5s infinite ease-in-out;"></span>
-                <span style="color: #ddd; font-size: 0.9rem;">
-                    <strong style="color: var(--neon-blue); font-family: 'JetBrains Mono', monospace;">CONTROL DE STOCK AVANZADO:</strong> 
+                <span class="admin-sync-text">
+                    <strong class="sync-highlight">CONTROL DE STOCK AVANZADO:</strong> 
                     Cada cambio de stock (En stock, Pocas unidades, Agotado) se transmite en tiempo real a la tienda.
                 </span>
             </div>
-            <div style="display: flex; gap: 8px;">
-                <button onclick="openSyncStorefront()" class="action-btn" style="background: rgba(0, 255, 128, 0.15); border: 1px solid #00ff80; color: #00ff80; font-weight: bold; padding: 6px 14px; cursor: pointer;">
-                    <i class="fas fa-external-link-alt"></i> Abrir Tienda Sincronizada
+            <div class="admin-sync-actions">
+                <button onclick="openSyncStorefront()" class="action-btn btn-sync-store">
+                    <i class="fas fa-external-link-alt"></i> Tienda Sincronizada
                 </button>
-                <button onclick="copyStorefrontSyncLink()" class="action-btn" style="background: rgba(0, 217, 255, 0.15); border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 6px 12px;" title="Copiar enlace con sincronización directa">
+                <button onclick="copyStorefrontSyncLink()" class="action-btn btn-sync-copy" title="Copiar enlace con sincronización directa">
                     <i class="fas fa-link"></i> Copiar Enlace
                 </button>
             </div>
         </div>
 
         <!-- Tarjetas de Resumen (KPIs Cyberpunk) -->
-        <div class="admin-kpis" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="admin-kpis">
             <div class="kpi-card">
                 <div style="flex: 1;">
                     <div class="kpi-title">Total Productos</div>
                     <div class="kpi-value" id="kpi-total">0</div>
-                    <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">Catálogo activo</div>
+                    <div class="kpi-subtext">Catálogo activo</div>
                 </div>
                 <i class="fas fa-boxes kpi-icon" style="color: var(--neon-blue);"></i>
             </div>
@@ -137,7 +139,7 @@
                 <div style="flex: 1;">
                     <div class="kpi-title">Categorías Activas</div>
                     <div class="kpi-value" id="kpi-categories" style="color: var(--neon-pink);">0</div>
-                    <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">Puntos de venta</div>
+                    <div class="kpi-subtext">Puntos de venta</div>
                 </div>
                 <i class="fas fa-tags kpi-icon" style="color: var(--neon-pink);"></i>
             </div>
@@ -152,13 +154,13 @@
         <div class="admin-toolbar">
             <div class="admin-toolbar-left">
                 <!-- Buscador Instantáneo -->
-                <div style="position: relative; flex: 1; min-width: 240px;">
-                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i>
-                    <input type="text" id="admin-search" placeholder="Buscar por nombre, ID, precio o tipo..." class="admin-input" style="width: 100%; padding-left: 36px;" oninput="filterAdminProducts()">
+                <div class="admin-search-wrapper">
+                    <i class="fas fa-search admin-search-icon"></i>
+                    <input type="text" id="admin-search" placeholder="Buscar por nombre, ID, precio o tipo..." class="admin-input admin-search-input" oninput="filterAdminProducts()">
                 </div>
 
                 <!-- Filtro de Stock -->
-                <select id="admin-stock-filter" class="admin-select" onchange="filterAdminProducts()">
+                <select id="admin-stock-filter" class="admin-select admin-filter-select" onchange="filterAdminProducts()">
                     <option value="todos">Todos los estados</option>
                     <option value="en-stock">🟢 Solo En Stock</option>
                     <option value="pocas">🟡 Solo Pocas Unidades</option>
@@ -168,40 +170,40 @@
                 <!-- Conmutador de Vista (Cuadrícula vs Tabla) -->
                 <div class="view-switcher" title="Cambiar modo de visualización">
                     <button id="view-btn-grid" class="view-btn active" onclick="setViewMode('grid')">
-                        <i class="fas fa-th-large"></i> Cuadrícula
+                        <i class="fas fa-th-large"></i> <span class="view-btn-text">Cuadrícula</span>
                     </button>
                     <button id="view-btn-table" class="view-btn" onclick="setViewMode('table')">
-                        <i class="fas fa-list"></i> Tabla
+                        <i class="fas fa-list"></i> <span class="view-btn-text">Tabla</span>
                     </button>
                 </div>
             </div>
             
             <div class="admin-toolbar-right">
                 <!-- Acciones Rápidas por Lote -->
-                <button class="action-btn" onclick="bulkSetCategoryStockState('en-stock')" style="background: rgba(0, 255, 128, 0.15); border: 1px solid #00ff80; color: #00ff80;" title="Poner todas las cartas de la categoría actual como En Stock">
+                <button class="action-btn btn-bulk-stock" onclick="bulkSetCategoryStockState('en-stock')" style="background: rgba(0, 255, 128, 0.15); border: 1px solid #00ff80; color: #00ff80;" title="Poner todas las cartas de la categoría actual como En Stock">
                     <i class="fas fa-check-double"></i> Todo En Stock
                 </button>
-                <button class="action-btn" onclick="bulkSetCategoryStockState('pocas')" style="background: rgba(255, 215, 0, 0.15); border: 1px solid #ffd700; color: #ffd700;" title="Poner todas las cartas de la categoría actual como Pocas Unidades">
+                <button class="action-btn btn-bulk-low" onclick="bulkSetCategoryStockState('pocas')" style="background: rgba(255, 215, 0, 0.15); border: 1px solid #ffd700; color: #ffd700;" title="Poner todas las cartas de la categoría actual como Pocas Unidades">
                     <i class="fas fa-bolt"></i> Pocas Unidades
                 </button>
-                <button class="action-btn" onclick="bulkSetCategoryStockState('agotado')" style="background: rgba(255, 68, 68, 0.15); border: 1px solid #ff4444; color: #ff4444;" title="Poner todas las cartas de la categoría actual como Agotadas">
+                <button class="action-btn btn-bulk-out" onclick="bulkSetCategoryStockState('agotado')" style="background: rgba(255, 68, 68, 0.15); border: 1px solid #ff4444; color: #ff4444;" title="Poner todas las cartas de la categoría actual como Agotadas">
                     <i class="fas fa-ban"></i> Todo Agotado
                 </button>
                 
                 <!-- Configuración WhatsApp -->
-                <button class="action-btn" onclick="openWhatsAppConfigModal()" style="background: rgba(37, 211, 102, 0.15); border: 1px solid #25D366; color: #25D366;" title="Configurar plantilla y número de WhatsApp">
+                <button class="action-btn btn-bulk-wa" onclick="openWhatsAppConfigModal()" style="background: rgba(37, 211, 102, 0.15); border: 1px solid #25D366; color: #25D366;" title="Configurar plantilla y número de WhatsApp">
                     <i class="fab fa-whatsapp"></i> Mensaje WhatsApp
                 </button>
                 
                 <!-- Respaldo JSON -->
-                <button class="action-btn" onclick="exportBackupJSON()" style="background: rgba(0, 217, 255, 0.15); border: 1px solid var(--neon-blue); color: var(--neon-blue);" title="Descargar copia de seguridad JSON">
+                <button class="action-btn btn-bulk-backup" onclick="exportBackupJSON()" style="background: rgba(0, 217, 255, 0.15); border: 1px solid var(--neon-blue); color: var(--neon-blue);" title="Descargar copia de seguridad JSON">
                     <i class="fas fa-download"></i> Respaldar
                 </button>
-                <label class="action-btn" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2); color: #ccc; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Cargar copia de seguridad JSON">
+                <label class="action-btn btn-bulk-restore" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2); color: #ccc; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Cargar copia de seguridad JSON">
                     <i class="fas fa-upload"></i> Restaurar
                     <input type="file" accept=".json" style="display: none;" onchange="importBackupJSON(this)">
                 </label>
-                <button class="action-btn" onclick="resetToDefaults()" style="background: transparent; border: 1px solid #666; color: #888;" title="Restablecer valores de fábrica">
+                <button class="action-btn btn-bulk-reset" onclick="resetToDefaults()" style="background: transparent; border: 1px solid #666; color: #888;" title="Restablecer valores de fábrica">
                     <i class="fas fa-redo"></i>
                 </button>
             </div>
@@ -214,6 +216,9 @@
 
         <!-- MODO 2: Vista Tabla Compacta -->
         <div id="admin-table-container" class="admin-table-container" style="display: none;">
+            <div class="admin-table-mobile-hint">
+                <i class="fas fa-arrows-alt-h"></i> Desliza horizontalmente para ver la tabla completa
+            </div>
             <table id="admin-table">
                 <thead>
                     <tr>
@@ -232,7 +237,7 @@
             </table>
         </div>
 
-        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; color: #888; font-size: 0.85rem;">
+        <div class="admin-footer-status">
             <span><i class="fas fa-microchip"></i> Modificaciones individuales activas: Cada tarjeta es 100% independiente.</span>
             <span id="sync-status" style="color: #00ff80;"><i class="fas fa-check-double"></i> Sincronizado localmente en tiempo real</span>
         </div>
@@ -486,7 +491,7 @@
                     <button type="button" class="action-btn" onclick="testSendWhatsAppConfig()" style="background: rgba(0, 217, 255, 0.15); border: 1px solid var(--neon-blue); color: var(--neon-blue);" title="Abrir WhatsApp para enviar un mensaje de prueba con este formato">
                         <i class="fab fa-whatsapp"></i> Probar Envío
                     </button>
-                    <div style="flex: 1;"></div>
+                    <div class="modal-footer-spacer"></div>
                     <button type="button" class="action-btn" onclick="closeWhatsAppConfigModal()" style="background: rgba(255,255,255,0.1); color: white;">
                         Cancelar
                     </button>
@@ -498,6 +503,11 @@
         </div>
     </div>
 
+    <!-- Botón Flotante para Móviles (Acceso Rápido a Agregar Carta) -->
+    <button id="admin-mobile-fab" class="admin-mobile-fab" onclick="openAddCardModal()" title="Agregar nueva carta" aria-label="Agregar nueva carta">
+        <i class="fas fa-plus"></i>
+    </button>
+
     <!-- Toast de Notificaciones Cyber HUD -->
     <div id="admin-toast">
         <i class="fas fa-check-circle" style="color: #00ff80; font-size: 1.2rem;"></i>
@@ -505,6 +515,6 @@
     </div>
 
     <!-- Script Principal con la lógica de Productos y Administración -->
-    <script src="script.js?v=2.3"></script>
+    <script src="script.js?v=2.4"></script>
 </body>
 </html>

@@ -154,6 +154,8 @@ header {
    ----------------------------------------- */
 .admin-container {
     max-width: 1250px;
+    width: 95%;
+    box-sizing: border-box;
     margin: 90px auto 40px auto;
     padding: 2rem;
     background: rgba(18, 18, 24, 0.85);
@@ -165,10 +167,145 @@ header {
 
 .login-card {
     max-width: 480px;
+    width: 90%;
+    box-sizing: border-box;
     margin: 140px auto 60px auto;
     text-align: center;
     border: 1px solid var(--neon-blue);
     box-shadow: 0 0 20px rgba(0, 217, 255, 0.25);
+}
+.login-icon {
+    font-size: 3.5rem;
+    color: var(--neon-blue);
+    margin-bottom: 15px;
+    text-shadow: 0 0 20px var(--neon-blue);
+}
+.login-subtext {
+    color: #aaa;
+    font-size: 0.95rem;
+    margin-top: 8px;
+}
+.login-input-group {
+    margin: 25px 0;
+}
+.login-input {
+    width: 100%;
+    text-align: center;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    box-sizing: border-box;
+}
+.login-submit-btn {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 12px;
+    background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+    border: none;
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.login-help-text {
+    margin-top: 15px;
+    font-size: 0.8rem;
+    color: #777;
+}
+
+/* Dashboard Header & Banner Base */
+.admin-dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.admin-dash-title {
+    color: var(--neon-blue);
+    font-size: 2.2rem;
+    text-shadow: 0 0 12px rgba(0, 217, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+}
+.admin-dash-subtitle {
+    color: #bbb;
+    font-size: 0.95rem;
+    margin-top: 4px;
+}
+.admin-dash-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.admin-add-btn {
+    background: linear-gradient(45deg, var(--neon-pink), var(--neon-purple));
+    border: none;
+    color: white;
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+    font-weight: bold;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.25s, box-shadow 0.25s;
+}
+.admin-add-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 22px rgba(255, 0, 255, 0.7);
+}
+
+.admin-sync-banner {
+    background: rgba(0, 217, 255, 0.08);
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.admin-sync-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.admin-sync-text {
+    color: #ddd;
+    font-size: 0.9rem;
+}
+.sync-highlight {
+    color: var(--neon-blue);
+    font-family: 'JetBrains Mono', monospace;
+}
+.admin-sync-actions {
+    display: flex;
+    gap: 8px;
+}
+.btn-sync-store {
+    background: rgba(0, 255, 128, 0.15);
+    border: 1px solid #00ff80;
+    color: #00ff80;
+    font-weight: bold;
+    padding: 6px 14px;
+    cursor: pointer;
+}
+.btn-sync-copy {
+    background: rgba(0, 217, 255, 0.15);
+    border: 1px solid var(--neon-blue);
+    color: var(--neon-blue);
+    padding: 6px 12px;
+}
+.btn-open-sync {
+    background: linear-gradient(45deg, rgba(0,217,255,0.2), rgba(0,255,128,0.25));
+    border: 1px solid #00ff80;
+    color: #00ff80;
+    font-weight: bold;
+    padding: 6px 14px;
+    cursor: pointer;
 }
 
 /* KPIs / Resumen Estadísticas */
@@ -207,6 +344,11 @@ header {
     font-size: 2rem;
     opacity: 0.7;
 }
+.kpi-subtext {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 4px;
+}
 
 /* Toolbar de Filtros y Acciones */
 .admin-toolbar {
@@ -230,6 +372,23 @@ header {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+}
+.admin-search-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 240px;
+}
+.admin-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    color: #888;
+    pointer-events: none;
+}
+.admin-search-input {
+    width: 100%;
+    padding-left: 36px;
+    box-sizing: border-box;
 }
 .admin-input, .admin-select, .admin-textarea {
     background: rgba(0, 0, 0, 0.6);
@@ -453,6 +612,9 @@ header {
     margin-top: 25px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 15px;
+}
+.modal-footer-spacer {
+    flex: 1;
 }
 
 /* Toast flotante */
@@ -987,6 +1149,55 @@ header {
     transition: width 0.5s ease;
 }
 
+/* Estado al pie del Dashboard y Utilidades Admin */
+.admin-footer-status {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    color: #888;
+    font-size: 0.85rem;
+}
+.admin-table-mobile-hint {
+    display: none;
+    background: rgba(0, 217, 255, 0.1);
+    border: 1px dashed var(--neon-blue);
+    color: var(--neon-blue);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.admin-mobile-fab {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 20px rgba(255, 0, 255, 0.5), 0 0 15px var(--neon-pink);
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s, box-shadow 0.25s;
+    -webkit-tap-highlight-color: transparent;
+}
+.admin-mobile-fab:active {
+    transform: scale(0.92);
+}
+
+
 
 /* -----------------------------------------
    11. PIE DE PÁGINA (Footer)
@@ -1008,9 +1219,21 @@ footer { background: rgba(13, 13, 13, 0.9); padding: 4rem 5%; }
 .copyright { text-align: center; margin-top: 1.5rem; opacity: 0.8; }
 
 /* -----------------------------------------
-   12. DISEÑO RESPONSIVO (Móviles)
+   12. DISEÑO RESPONSIVO (Móviles y Tablets)
    ----------------------------------------- */
+@media (max-width: 992px) {
+    .admin-container {
+        margin: 80px auto 30px auto;
+        padding: 1.5rem 1.2rem;
+        width: 96%;
+    }
+    .admin-dash-title {
+        font-size: 1.8rem;
+    }
+}
+
 @media (max-width: 768px) {
+    /* Tienda y Elementos Globales */
     header {
         flex-direction: row;
         justify-content: space-between;
@@ -1034,6 +1257,387 @@ footer { background: rgba(13, 13, 13, 0.9); padding: 4rem 5%; }
     .hero-image { margin-top: 2rem; width: 100%; height: auto; }
     .mobile-cta { display: inline-block; }
     .collaborators-socials { gap: 2rem; }
+
+    /* =========================================
+       PANEL DE ADMINISTRACIÓN RESPONSIVO EN MÓVILES
+       ========================================= */
+    /* Header del Admin */
+    header.admin-header {
+        padding: 0.6rem 3%;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: space-between;
+    }
+    .admin-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .admin-brand .logo {
+        font-size: 1.1rem;
+        white-space: nowrap;
+    }
+    .admin-hub-badge {
+        font-size: 0.75rem;
+        color: var(--neon-blue);
+    }
+    .admin-nav-links {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .admin-nav-links .action-btn,
+    .admin-nav-links .audio-toggle-btn,
+    .admin-nav-links .admin-nav-link {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        border-radius: 6px;
+    }
+
+    /* Contenedor Principal Autoajustable */
+    .admin-container {
+        margin: 70px auto 20px auto;
+        padding: 14px 10px;
+        width: 96%;
+        border-radius: 12px;
+        box-sizing: border-box;
+    }
+
+    /* Caja de Login */
+    .login-card {
+        margin: 85px 12px 30px 12px !important;
+        padding: 24px 16px !important;
+        width: auto !important;
+        max-width: 100% !important;
+    }
+    .login-card h2 {
+        font-size: 1.35rem;
+    }
+    .login-input {
+        font-size: 16px !important;
+        padding: 12px !important;
+    }
+    .login-submit-btn {
+        padding: 12px !important;
+        font-size: 1rem !important;
+    }
+
+    /* Encabezado del Dashboard */
+    .admin-dash-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        margin-bottom: 16px !important;
+    }
+    .admin-dash-title {
+        font-size: 1.35rem !important;
+        line-height: 1.25;
+    }
+    .admin-dash-subtitle {
+        font-size: 0.85rem !important;
+    }
+    .admin-dash-actions {
+        width: 100%;
+    }
+    .admin-add-btn {
+        width: 100% !important;
+        padding: 12px !important;
+        font-size: 0.95rem !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    /* Barra de Sincronización */
+    .admin-sync-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 12px 14px !important;
+    }
+    .admin-sync-actions {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+    .admin-sync-actions button {
+        flex: 1;
+        padding: 8px 6px !important;
+        font-size: 0.78rem !important;
+        justify-content: center;
+        text-align: center;
+    }
+
+    /* KPIs Cuadrícula 2x2 + 1 */
+    .admin-kpis {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 18px;
+    }
+    .admin-kpis .kpi-card:last-child {
+        grid-column: span 2;
+    }
+    .kpi-card {
+        padding: 12px 14px;
+    }
+    .kpi-title {
+        font-size: 0.75rem;
+    }
+    .kpi-value {
+        font-size: 1.4rem;
+    }
+    .kpi-icon {
+        font-size: 1.4rem;
+    }
+
+    /* Chips de Categorías con Scroll Táctil */
+    .admin-chips-container {
+        padding: 6px 2px 12px 2px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .admin-chips-container::-webkit-scrollbar {
+        display: none;
+    }
+    .admin-chip {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+
+    /* Barra de Herramientas y Filtros */
+    .admin-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .admin-toolbar-left {
+        width: 100%;
+        min-width: 0;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .admin-search-wrapper {
+        width: 100%;
+        min-width: 0;
+    }
+    .admin-search-input {
+        width: 100%;
+        font-size: 16px !important;
+        box-sizing: border-box;
+    }
+    .admin-filter-select {
+        width: 100%;
+        font-size: 16px !important;
+        box-sizing: border-box;
+    }
+    .view-switcher {
+        width: 100%;
+        display: flex;
+    }
+    .view-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 8px;
+    }
+
+    /* Botones de acción en cuadrícula táctil organizada */
+    .admin-toolbar-right {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        width: 100%;
+    }
+    .admin-toolbar-right .btn-bulk-stock,
+    .admin-toolbar-right .btn-bulk-low,
+    .admin-toolbar-right .btn-bulk-out {
+        font-size: 0.74rem;
+        padding: 8px 3px;
+        justify-content: center;
+        text-align: center;
+        margin: 0;
+    }
+    .admin-toolbar-right .btn-bulk-wa {
+        grid-column: span 3;
+        justify-content: center;
+        padding: 10px;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    .admin-toolbar-right .btn-bulk-backup,
+    .admin-toolbar-right .btn-bulk-restore {
+        font-size: 0.76rem;
+        justify-content: center;
+        padding: 8px 4px;
+        margin: 0;
+    }
+    .admin-toolbar-right .btn-bulk-reset {
+        justify-content: center;
+        padding: 8px 4px;
+        margin: 0;
+    }
+
+    /* Tarjetas del Administrador */
+    .admin-cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+    .admin-card-box {
+        padding: 14px;
+        border-radius: 12px;
+    }
+    .admin-card-media {
+        height: 160px;
+    }
+    .admin-card-media img {
+        height: 160px;
+    }
+    .hud-stock-pills {
+        gap: 4px;
+    }
+    .hud-pill-btn {
+        padding: 8px 3px;
+        font-size: 0.75rem;
+        min-height: 38px;
+    }
+    .admin-card-actions {
+        gap: 6px;
+    }
+    .admin-card-actions .edit-btn {
+        flex: 2;
+        padding: 10px;
+    }
+    .admin-card-actions button {
+        padding: 10px;
+        min-height: 40px;
+    }
+
+    /* Modo Tabla */
+    .admin-table-container {
+        margin-top: 10px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .admin-table-mobile-hint {
+        display: block;
+    }
+
+    /* Modales en Móvil */
+    .admin-modal-overlay {
+        padding: 8px;
+        align-items: center;
+    }
+    .admin-modal-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 94vh;
+        padding: 16px 12px;
+        border-radius: 12px;
+    }
+    .admin-modal-header h2 {
+        font-size: 1.15rem;
+    }
+    .admin-modal-close {
+        padding: 6px;
+        font-size: 1.6rem;
+    }
+    .modal-split-container {
+        grid-template-columns: 1fr !important;
+        gap: 15px;
+    }
+    .admin-form-group input,
+    .admin-form-group textarea,
+    .admin-form-group select {
+        font-size: 16px !important;
+        min-height: 42px;
+        box-sizing: border-box;
+    }
+    .admin-modal-footer {
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+    }
+    .admin-modal-footer button,
+    .admin-modal-footer .action-btn,
+    .admin-modal-footer .cta-btn {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+        padding: 12px;
+        font-size: 0.95rem;
+        margin: 0;
+        box-sizing: border-box;
+    }
+    #whatsapp-config-modal .admin-modal-footer {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    #whatsapp-config-modal .admin-modal-footer .modal-footer-spacer {
+        display: none !important;
+    }
+    #whatsapp-config-modal .admin-modal-footer button[type="submit"] {
+        grid-column: span 2;
+        order: -1;
+    }
+
+    /* FAB Flotante para Móviles */
+    .admin-mobile-fab.fab-visible {
+        display: flex;
+    }
+
+    /* Toast Flotante */
+    #admin-toast {
+        left: 15px;
+        right: 15px;
+        bottom: 20px;
+        text-align: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        padding: 10px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-container {
+        padding: 10px 8px;
+        margin: 65px auto 15px auto;
+        width: 98%;
+        border-radius: 10px;
+    }
+    .admin-brand .logo {
+        font-size: 0.95rem;
+    }
+    .admin-hub-badge {
+        display: none;
+    }
+    .admin-nav-links .nav-text {
+        display: none;
+    }
+    .admin-nav-links .action-btn,
+    .admin-nav-links .audio-toggle-btn {
+        padding: 6px 9px;
+        font-size: 0.85rem;
+    }
+    .admin-kpis {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+    }
+    .kpi-card {
+        padding: 8px 10px;
+    }
+    .kpi-value {
+        font-size: 1.25rem;
+    }
+    .kpi-title {
+        font-size: 0.7rem;
+    }
+    .hud-pill-btn {
+        font-size: 0.72rem;
+        padding: 8px 2px;
+    }
 }
 
 

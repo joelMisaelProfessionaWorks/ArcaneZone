@@ -1172,11 +1172,11 @@ function toggleSound() {
     if (btn) {
         if (soundEnabled) {
             btn.classList.add('active');
-            btn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido: ON';
+            btn.innerHTML = '<i class="fas fa-volume-up"></i> <span class="nav-text">Sonido: ON</span>';
             playCyberSound('click');
         } else {
             btn.classList.remove('active');
-            btn.innerHTML = '<i class="fas fa-volume-mute"></i> Sonido: OFF';
+            btn.innerHTML = '<i class="fas fa-volume-mute"></i> <span class="nav-text">Sonido: OFF</span>';
         }
     }
 }
@@ -1198,11 +1198,13 @@ function login() {
         const dashboard = document.getElementById('dashboard');
         const logoutBtn = document.getElementById('logout-btn');
         const headerPulse = document.getElementById('header-pulse');
+        const fab = document.getElementById('admin-mobile-fab');
 
         if (loginBox) loginBox.style.display = 'none';
         if (dashboard) dashboard.style.display = 'block';
         if (logoutBtn) logoutBtn.style.display = 'inline-block';
         if (headerPulse) headerPulse.style.display = 'inline-flex';
+        if (fab) fab.classList.add('fab-visible');
 
         initAdminDashboard();
         showAdminToast('Sesión iniciada. Bienvenido al Terminal Arcana.');
@@ -1218,11 +1220,13 @@ function logout() {
     const dashboard = document.getElementById('dashboard');
     const logoutBtn = document.getElementById('logout-btn');
     const headerPulse = document.getElementById('header-pulse');
+    const fab = document.getElementById('admin-mobile-fab');
 
     if (loginBox) loginBox.style.display = 'block';
     if (dashboard) dashboard.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
     if (headerPulse) headerPulse.style.display = 'none';
+    if (fab) fab.classList.remove('fab-visible');
 }
 
 function initAdminDashboard() {
