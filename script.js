@@ -91,7 +91,7 @@ const DEFAULT_PRODUCTS = [
         "category": "Streaming",
         "saleType": "Streaming (Completa)",
         "price": "Precio: $85 MXN",
-        "description": "Anime sin li­mites, cuenta completa.",
+        "description": "Anime sin límites, cuenta completa.",
         "image": "crunchyroll.jpg",
         "inStock": true,
         "filterClass": "completa"
@@ -113,7 +113,7 @@ const DEFAULT_PRODUCTS = [
         "category": "Streaming",
         "saleType": "Streaming (Completa)",
         "price": "Precio: $70 MXN",
-        "description": "TelevisiÃ³n, pelÃ­culas y series en vivo.",
+        "description": "Televisión, películas y series en vivo.",
         "image": "IPTV.jpg",
         "inStock": true,
         "filterClass": "completa"
@@ -135,7 +135,7 @@ const DEFAULT_PRODUCTS = [
         "category": "Streaming",
         "saleType": "Streaming (Completa)",
         "price": "Precio: $170 MXN",
-        "description": "Suscripcion anual de Vix+ sin restricciones.",
+        "description": "Suscripción anual de Vix+ sin restricciones.",
         "image": "vix.jpg",
         "inStock": true,
         "filterClass": "completa"
@@ -201,7 +201,7 @@ const DEFAULT_PRODUCTS = [
         "category": "Streaming",
         "saleType": "Streaming (YouTube Premium Perfil)",
         "price": "Precio: $45 MXN",
-        "description": "MembresÃ­a por invitaciÃ³n a tu correo.",
+        "description": "Membresía por invitación a tu correo.",
         "image": "premiumYT.jpg",
         "inStock": true,
         "filterClass": "perfil"
@@ -300,7 +300,7 @@ const DEFAULT_PRODUCTS = [
         "category": "Smart Fit",
         "saleType": "Smart Fit",
         "price": "Precio: $250.00 MXN",
-        "description": "Acceso a tu gimnasio de preferencia y Ã¡rea de peso libre.",
+        "description": "Acceso a tu gimnasio de preferencia y área de peso libre.",
         "image": "Smartfit_plan.jpg",
         "inStock": true,
         "filterClass": ""
@@ -333,7 +333,7 @@ const DEFAULT_PRODUCTS = [
         "category": "Seguidores de Instagram y Tiktok",
         "saleType": "Seguidores de Instagram y Tiktok",
         "price": "Precio: $90.00 MXN cada 1k",
-        "description": "Impulsa tus videos y llega a mÃ¡s audiencia de forma rÃ¡pida.",
+        "description": "Impulsa tus videos y llega a más audiencia de forma rápida.",
         "image": "Tiktok_Instagram.png",
         "inStock": true,
         "filterClass": ""
@@ -344,7 +344,7 @@ const DEFAULT_PRODUCTS = [
         "category": "Canva",
         "saleType": "Canva",
         "price": "Precio: $60.00 MXN",
-        "description": "Acceso total a herramientas y recursos premium para tus diseÃ±os.",
+        "description": "Acceso total a herramientas y recursos premium para tus diseños.",
         "image": "CanvaPro.jpg",
         "inStock": true,
         "filterClass": ""
@@ -355,14 +355,14 @@ const DEFAULT_PRODUCTS = [
         "category": "Duolingo",
         "saleType": "Duolingo",
         "price": "Precio: $50.00 MXN",
-        "description": "Aprende idiomas sin anuncios, con vidas ilimitadas y mÃ¡s beneficios.",
+        "description": "Aprende idiomas sin anuncios, con vidas ilimitadas y más beneficios.",
         "image": "SuperDuolingo.jpg",
         "inStock": true,
         "filterClass": ""
     },
     {
         "id": "recargas-telefonicas",
-        "name": "Recargas TelefÃ³nicas / fuera de servicio",
+        "name": "Recargas Telefónicas / fuera de servicio",
         "category": "Recargas Telcel y Bait",
         "saleType": "Recargas Telcel y Bait",
         "price": "Precio desde los $100.00 MXN",
