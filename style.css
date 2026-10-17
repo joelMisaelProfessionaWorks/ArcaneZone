@@ -680,7 +680,7 @@ header {
     min-height: 2.8em;
 }
 
-/* Cyber Toggle Switch */
+/* Cyber Toggle Switch & Advanced HUD Stock Controls */
 .switch-container {
     display: flex;
     align-items: center;
@@ -738,6 +738,199 @@ header {
     transform: translateX(23px);
     background-color: #00ff80;
     box-shadow: 0 0 10px #00ff80;
+}
+
+/* =========================================================================
+   SISTEMA DE CONTROL DE STOCK AVANZADO CYBERPUNK (HUD 3 ESTADOS)
+   ========================================================================= */
+.hud-stock-control {
+    background: rgba(10, 15, 24, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    position: relative;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+    transition: all 0.3s ease;
+}
+.hud-stock-control.stock-state-in-stock {
+    border-color: rgba(0, 255, 128, 0.4);
+    box-shadow: 0 0 15px rgba(0, 255, 128, 0.15), inset 0 0 12px rgba(0, 255, 128, 0.05);
+}
+.hud-stock-control.stock-state-low {
+    border-color: rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.15), inset 0 0 12px rgba(255, 215, 0, 0.05);
+}
+.hud-stock-control.stock-state-out-of-stock {
+    border-color: rgba(255, 68, 68, 0.4);
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.15), inset 0 0 12px rgba(255, 68, 68, 0.05);
+}
+
+.hud-stock-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.hud-stock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.hud-stock-badge.badge-in-stock {
+    background: rgba(0, 255, 128, 0.15);
+    color: #00ff80;
+    border: 1px solid rgba(0, 255, 128, 0.5);
+    box-shadow: 0 0 10px rgba(0, 255, 128, 0.25);
+}
+.hud-stock-badge.badge-low {
+    background: rgba(255, 215, 0, 0.15);
+    color: #ffd700;
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+    animation: neonPulse 2s infinite ease-in-out;
+}
+.hud-stock-badge.badge-out-of-stock {
+    background: rgba(255, 68, 68, 0.15);
+    color: #ff4444;
+    border: 1px solid rgba(255, 68, 68, 0.5);
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.25);
+}
+
+.hud-led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.hud-led.led-green {
+    background: #00ff80;
+    box-shadow: 0 0 8px #00ff80, 0 0 12px #00ff80;
+}
+.hud-led.led-yellow {
+    background: #ffd700;
+    box-shadow: 0 0 8px #ffd700, 0 0 12px #ffd700;
+}
+.hud-led.led-red {
+    background: #ff4444;
+    box-shadow: 0 0 8px #ff4444, 0 0 12px #ff4444;
+}
+
+.hud-stock-pills {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hud-pill-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #888;
+    padding: 7px 4px;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.hud-pill-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.08);
+}
+.hud-pill-btn.active.pill-in-stock {
+    background: rgba(0, 255, 128, 0.25);
+    color: #00ff80;
+    border-color: #00ff80;
+    box-shadow: 0 0 10px rgba(0, 255, 128, 0.4);
+}
+.hud-pill-btn.active.pill-low {
+    background: rgba(255, 215, 0, 0.25);
+    color: #ffd700;
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+.hud-pill-btn.active.pill-out-of-stock {
+    background: rgba(255, 68, 68, 0.25);
+    color: #ff4444;
+    border-color: #ff4444;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+}
+
+/* Botón de Stock Avanzado en Vista Tabla */
+.stock-btn-adv {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: 1px solid transparent;
+    min-width: 120px;
+}
+.stock-btn-adv.adv-in-stock {
+    background: rgba(0, 255, 128, 0.15);
+    color: #00ff80;
+    border-color: #00ff80;
+    box-shadow: 0 0 8px rgba(0, 255, 128, 0.2);
+}
+.stock-btn-adv.adv-in-stock:hover {
+    background: rgba(0, 255, 128, 0.3);
+    box-shadow: 0 0 14px rgba(0, 255, 128, 0.5);
+    transform: scale(1.04);
+}
+.stock-btn-adv.adv-low {
+    background: rgba(255, 215, 0, 0.15);
+    color: #ffd700;
+    border-color: #ffd700;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+}
+.stock-btn-adv.adv-low:hover {
+    background: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.5);
+    transform: scale(1.04);
+}
+.stock-btn-adv.adv-out-of-stock {
+    background: rgba(255, 68, 68, 0.15);
+    color: #ff4444;
+    border-color: #ff4444;
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.2);
+}
+.stock-btn-adv.adv-out-of-stock:hover {
+    background: rgba(255, 68, 68, 0.3);
+    box-shadow: 0 0 14px rgba(255, 68, 68, 0.5);
+    transform: scale(1.04);
+}
+
+@keyframes stockFlash {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.04); filter: brightness(1.4); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+.stock-updated-flash {
+    animation: stockFlash 0.35s ease-out;
+}
+.stock-pulse-gold {
+    animation: neonPulse 1.8s infinite ease-in-out;
 }
 
 .admin-card-actions {

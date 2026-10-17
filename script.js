@@ -375,26 +375,26 @@ const DEFAULT_PRODUCTS = [
 
 const ARCANA_IMAGES = [
     { file: "paramount.png", name: "Paramount+" },
-    { file: "Disney.jpg", name: "Disney+" },
-    { file: "HBO.png", name: "Max / HBO" },
+    { file: "disney.png", name: "Disney+" },
+    { file: "max.jpg", name: "Max (HBO)" },
     { file: "Prime.png", name: "Prime Video" },
     { file: "crunchyroll.jpg", name: "Crunchyroll" },
-    { file: "netflix.jpg", name: "Netflix" },
-    { file: "vix.jpg", name: "Vix+" },
     { file: "premiumYT.jpg", name: "YouTube Premium" },
     { file: "IPTV.jpg", name: "IPTV" },
-    { file: "chatgpt.png", name: "ChatGPT Plus" },
+    { file: "vix.jpg", name: "Vix+" },
+    { file: "netflix.jpg", name: "Netflix" },
     { file: "universal.jpg", name: "Universal+" },
-    { file: "spotify.jpg", name: "Spotify (1 mes)" },
-    { file: "Spotify3meses.png", name: "Spotify (3 meses)" },
+    { file: "chatgpt.png", name: "ChatGPT Plus" },
+    { file: "spotify.jpg", name: "Spotify 1 Mes" },
+    { file: "Spotify3meses.png", name: "Spotify 3 Meses" },
     { file: "Spotifyfamiliar.jpg", name: "Spotify Familiar" },
     { file: "Fit.jpg", name: "Smart Fit (Plan Fit)" },
     { file: "Smartfit_plan.jpg", name: "Smart Fit (Plan Smart)" },
     { file: "Black.jpg", name: "Smart Fit (Plan Black)" },
-    { file: "Tiktok_Instagram.png", name: "Seguidores TikTok / Instagram" },
-    { file: "CanvaPro.jpg", name: "Canva Pro" },
-    { file: "SuperDuolingo.jpg", name: "Super Duolingo" },
-    { file: "RecargasTelefono.png", name: "Recargas Telefónicas" },
+    { file: "Tiktok_Instagram.png", name: "Seguidores Instagram y TikTok" },
+    { file: "canva.png", name: "Canva Pro" },
+    { file: "duolingo.png", name: "Super Duolingo" },
+    { file: "recargas.jpg", name: "Recargas Telefónicas" },
     { file: "Arcana_Logo.png", name: "Logo Arcana (Predeterminado)" }
 ];
 
@@ -420,6 +420,7 @@ function saveWhatsAppConfig(phone, template) {
     };
     localStorage.setItem('arcana_whatsapp_config', JSON.stringify(config));
     notifyStorefrontUpdate();
+    broadcastStorefrontSync();
 }
 
 // Obtiene los overrides guardados por el admin
@@ -442,11 +443,17 @@ function getCustomCards() {
     }
 }
 
-// Notifica a todas las pestañas de una actualización
+// Notifica a todas las pestañas de una actualización local
 function notifyStorefrontUpdate() {
     if (typeof localStorage !== 'undefined') {
         localStorage.setItem('arcana_version', Date.now().toString());
     }
+}
+
+// Normaliza el estado de stock ('en-stock' | 'pocas' | 'agotado')
+function getProductStockState(p) {
+    if (p.stockState) return p.stockState;
+    return p.inStock ? 'en-stock' : 'agotado';
 }
 
 // Combina el catálogo base + overrides + cartas personalizadas (con soporte de papelera)
@@ -457,25 +464,131 @@ function getAllCatalogProducts(includeDeleted = true) {
     const mergedDefaults = DEFAULT_PRODUCTS.map(p => {
         const custom = overrides[p.id];
         if (custom) {
+            const inStockVal = custom.inStock !== undefined ? custom.inStock : p.inStock;
+            const stockStateVal = custom.stockState || (inStockVal ? 'en-stock' : 'agotado');
             return {
                 ...p,
                 name: custom.name !== undefined ? custom.name : p.name,
                 price: custom.price !== undefined ? custom.price : p.price,
                 description: custom.description !== undefined ? custom.description : p.description,
-                inStock: custom.inStock !== undefined ? custom.inStock : p.inStock,
+                inStock: inStockVal,
+                stockState: stockStateVal,
                 image: custom.image !== undefined ? custom.image : p.image,
                 isDeleted: !!custom.isDeleted
             };
         }
-        return { ...p, isDeleted: false };
+        return { ...p, stockState: p.inStock ? 'en-stock' : 'agotado', isDeleted: false };
     });
 
-    const all = [...mergedDefaults, ...customCards];
+    const customCardsMapped = customCards.map(c => ({
+        ...c,
+        stockState: c.stockState || (c.inStock ? 'en-stock' : 'agotado')
+    }));
+
+    const all = [...mergedDefaults, ...customCardsMapped];
     return includeDeleted ? all : all.filter(p => !p.isDeleted);
 }
 
 // =========================================================================
-// 4. LÓGICA DE TIENDA: productos.html (Sincronización en Tiempo Real)
+// 4. MOTOR DE SINCRONIZACIÓN MULTI-CANAL EN TIEMPO REAL
+// (Garantiza actualización instantánea en file:///, localhost y web)
+// =========================================================================
+let openedStorefrontTabs = [];
+let syncBroadcastChannel = null;
+
+if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+    try {
+        syncBroadcastChannel = new BroadcastChannel('arcana_sync_bus');
+        syncBroadcastChannel.onmessage = (event) => {
+            if (event.data && event.data.type === 'ARCANA_SYNC_PAYLOAD') {
+                applySyncedStorePayload(event.data.payload);
+            }
+        };
+    } catch(e) {}
+}
+
+function getStoreSyncPayload() {
+    return {
+        overrides: getProductOverrides(),
+        customCards: getCustomCards(),
+        whatsappConfig: getWhatsAppConfig(),
+        v: Date.now()
+    };
+}
+
+function broadcastStorefrontSync() {
+    const payload = getStoreSyncPayload();
+
+    // 1. BroadcastChannel (para pestañas del mismo origen/localhost)
+    if (syncBroadcastChannel) {
+        try {
+            syncBroadcastChannel.postMessage({ type: 'ARCANA_SYNC_PAYLOAD', payload });
+        } catch(e) {}
+    }
+
+    // 2. postMessage a todas las pestañas de tienda abiertas por este panel
+    openedStorefrontTabs = openedStorefrontTabs.filter(w => w && !w.closed);
+    openedStorefrontTabs.forEach(w => {
+        try {
+            w.postMessage({ type: 'ARCANA_SYNC_PAYLOAD', payload }, '*');
+        } catch(e) {}
+    });
+
+    // 3. postMessage a ventana abridora si existe
+    if (typeof window !== 'undefined' && window.opener && !window.opener.closed) {
+        try {
+            window.opener.postMessage({ type: 'ARCANA_SYNC_PAYLOAD', payload }, '*');
+        } catch(e) {}
+    }
+}
+
+function openSyncStorefront() {
+    const payload = getStoreSyncPayload();
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const url = 'productos.html#sync=' + encoded;
+    const win = window.open(url, 'arcana_storefront_tab');
+    if (win) {
+        openedStorefrontTabs.push(win);
+        win.focus();
+        if (typeof showAdminToast === 'function') {
+            showAdminToast('Tienda sincronizada y abierta en nueva pestaña');
+        }
+    }
+}
+
+function copyStorefrontSyncLink() {
+    const payload = getStoreSyncPayload();
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const base = window.location.href.replace(/admin\.html.*$/, 'productos.html');
+    const fullUrl = base + '#sync=' + encoded;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullUrl).then(() => {
+            if (typeof showAdminToast === 'function') showAdminToast('Enlace de tienda sincronizada copiado al portapapeles');
+        }).catch(() => {
+            prompt('Copia este enlace de la tienda sincronizada:', fullUrl);
+        });
+    } else {
+        prompt('Copia este enlace de la tienda sincronizada:', fullUrl);
+    }
+}
+
+function applySyncedStorePayload(payload) {
+    if (!payload) return;
+    try {
+        if (typeof localStorage !== 'undefined') {
+            if (payload.overrides) localStorage.setItem('arcana_product_overrides', JSON.stringify(payload.overrides));
+            if (payload.customCards) localStorage.setItem('arcana_custom_cards', JSON.stringify(payload.customCards));
+            if (payload.whatsappConfig) localStorage.setItem('arcana_whatsapp_config', JSON.stringify(payload.whatsappConfig));
+            if (payload.v) localStorage.setItem('arcana_version', payload.v.toString());
+        }
+        applyStorefrontCustomizations();
+    } catch(e) {
+        console.error('Error al aplicar datos sincronizados:', e);
+    }
+}
+
+// =========================================================================
+// 5. LÓGICA DE TIENDA: productos.html (Renderizado y Estados de Stock)
 // =========================================================================
 let lastStorefrontStamp = null;
 
@@ -531,9 +644,12 @@ function applyStorefrontCustomizations() {
                     img.src = custom.image;
                 }
             }
-            if (custom.inStock !== undefined) {
-                card.setAttribute('data-stock', custom.inStock ? 'En stock' : 'Agotado');
-                updateCardStockUI(card, custom.inStock);
+            if (custom.inStock !== undefined || custom.stockState !== undefined) {
+                const effectiveInStock = custom.inStock !== undefined ? custom.inStock : (custom.stockState !== 'agotado');
+                const effectiveState = custom.stockState || (effectiveInStock ? 'en-stock' : 'agotado');
+                card.setAttribute('data-stock', effectiveInStock ? 'En stock' : 'Agotado');
+                card.setAttribute('data-stock-state', effectiveState);
+                updateCardStockUI(card, effectiveInStock, effectiveState);
             }
         }
     });
@@ -550,7 +666,7 @@ function applyStorefrontCustomizations() {
     });
 }
 
-function updateCardStockUI(card, inStock) {
+function updateCardStockUI(card, inStock, stockState) {
     const info = card.querySelector('.game-info');
     const img = card.querySelector('img');
     const addBtn = card.querySelector('.cart-add-btn');
@@ -571,22 +687,14 @@ function updateCardStockUI(card, inStock) {
     const prevSoldOut = card.querySelector('.sold-out-text');
     if (prevSoldOut) prevSoldOut.remove();
 
-    if (inStock) {
-        if (stockStatus) {
-            stockStatus.style.display = 'block';
-            stockStatus.style.color = '#00ff80';
-            stockStatus.innerText = 'En stock';
-        }
-        if (img) img.classList.remove('sold-out-img');
-        if (addBtn) {
-            addBtn.style.display = 'block';
-            addBtn.disabled = false;
-        }
-    } else {
+    const state = stockState || (inStock ? 'en-stock' : 'agotado');
+
+    if (state === 'agotado') {
         if (stockStatus) {
             stockStatus.style.display = 'block';
             stockStatus.style.color = '#ff4444';
-            stockStatus.innerText = 'Agotado';
+            stockStatus.className = 'stock-status';
+            stockStatus.innerHTML = '<i class="fas fa-times-circle"></i> Agotado';
         }
         if (img) img.classList.add('sold-out-img');
         if (addBtn) {
@@ -594,9 +702,37 @@ function updateCardStockUI(card, inStock) {
         }
         const soldOutTag = document.createElement('h4');
         soldOutTag.className = 'sold-out-text';
-        soldOutTag.style.cssText = 'color: #ff4444; margin-top: 10px; font-weight: bold;';
-        soldOutTag.innerText = 'AGOTADO';
+        soldOutTag.style.cssText = 'color: #ff4444; margin-top: 10px; font-weight: bold; letter-spacing: 1px;';
+        soldOutTag.innerHTML = '<i class="fas fa-ban"></i> AGOTADO';
         if (info) info.appendChild(soldOutTag);
+    } else if (state === 'pocas') {
+        if (stockStatus) {
+            stockStatus.style.display = 'block';
+            stockStatus.style.color = '#ffd700';
+            stockStatus.className = 'stock-status stock-pulse-gold';
+            stockStatus.innerHTML = '<i class="fas fa-bolt"></i> ¡ÚLTIMAS PIEZAS DISPONIBLES!';
+        }
+        if (img) img.classList.remove('sold-out-img');
+        if (addBtn) {
+            addBtn.style.display = 'block';
+            addBtn.disabled = false;
+            addBtn.style.borderColor = '#ffd700';
+            addBtn.style.color = '#ffd700';
+        }
+    } else { // 'en-stock'
+        if (stockStatus) {
+            stockStatus.style.display = 'block';
+            stockStatus.style.color = '#00ff80';
+            stockStatus.className = 'stock-status';
+            stockStatus.innerHTML = '<i class="fas fa-check-circle"></i> En stock';
+        }
+        if (img) img.classList.remove('sold-out-img');
+        if (addBtn) {
+            addBtn.style.display = 'block';
+            addBtn.disabled = false;
+            addBtn.style.borderColor = 'var(--neon-pink)';
+            addBtn.style.color = 'var(--neon-pink)';
+        }
     }
 }
 
@@ -654,23 +790,37 @@ function renderCustomCardInStore(cardData) {
 
     if (!container) return;
 
+    const state = cardData.stockState || (cardData.inStock ? 'en-stock' : 'agotado');
+    const isOut = state === 'agotado';
+    const isLow = state === 'pocas';
+
+    let statusHtml = '';
+    if (isOut) {
+        statusHtml = '<p class="stock-status" style="color: #ff4444; font-weight: bold; font-size: 0.9rem; margin-top: 5px;"><i class="fas fa-times-circle"></i> Agotado</p>';
+    } else if (isLow) {
+        statusHtml = '<p class="stock-status stock-pulse-gold" style="color: #ffd700; font-weight: bold; font-size: 0.9rem; margin-top: 5px;"><i class="fas fa-bolt"></i> ¡ÚLTIMAS PIEZAS DISPONIBLES!</p>';
+    } else {
+        statusHtml = '<p class="stock-status" style="color: #00ff80; font-weight: bold; font-size: 0.9rem; margin-top: 5px;"><i class="fas fa-check-circle"></i> En stock</p>';
+    }
+
     const newCard = document.createElement('div');
     newCard.className = `game-card custom-admin-card ${cardData.filterClass || ''}`;
     newCard.id = 'card-' + cardData.id;
     newCard.setAttribute('data-id', cardData.id);
     newCard.setAttribute('data-category', cardData.category);
     newCard.setAttribute('data-sale-type', cardData.saleType || cardData.category);
-    newCard.setAttribute('data-stock', cardData.inStock ? 'En stock' : 'Agotado');
+    newCard.setAttribute('data-stock', !isOut ? 'En stock' : 'Agotado');
+    newCard.setAttribute('data-stock-state', state);
 
     newCard.innerHTML = `
-        <img src="${cardData.image || 'Arcana_Logo.png'}" alt="${cardData.name}" class="${cardData.inStock ? '' : 'sold-out-img'}">
+        <img src="${cardData.image || 'Arcana_Logo.png'}" alt="${cardData.name}" class="${isOut ? 'sold-out-img' : ''}">
         <div class="game-info">
             <h3>${cardData.name}</h3>
             <p>${cardData.description || ''}</p>
-            <p class="stock-status" style="color: ${cardData.inStock ? '#00ff80' : '#ff4444'}; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">${cardData.inStock ? 'En stock' : 'Agotado'}</p>
+            ${statusHtml}
             <h4 style="color: var(--neon-pink); margin-top: 10px;">${cardData.price}</h4>
-            <button class="cart-add-btn" onclick="addToCart(this)" style="margin-top: 10px; width: 100%; padding: 8px; border-radius: 5px; background: transparent; border: 1px solid var(--neon-pink); color: var(--neon-pink); cursor: pointer; ${cardData.inStock ? '' : 'display: none;'}">Añadir al carrito</button>
-            ${!cardData.inStock ? '<h4 class="sold-out-text" style="color: #ff4444; margin-top: 10px; font-weight: bold;">AGOTADO</h4>' : ''}
+            <button class="cart-add-btn" onclick="addToCart(this)" style="margin-top: 10px; width: 100%; padding: 8px; border-radius: 5px; background: transparent; border: 1px solid ${isLow ? '#ffd700' : 'var(--neon-pink)'}; color: ${isLow ? '#ffd700' : 'var(--neon-pink)'}; cursor: pointer; ${isOut ? 'display: none;' : ''}">Añadir al carrito</button>
+            ${isOut ? '<h4 class="sold-out-text" style="color: #ff4444; margin-top: 10px; font-weight: bold; letter-spacing: 1px;"><i class="fas fa-ban"></i> AGOTADO</h4>' : ''}
         </div>
     `;
 
@@ -679,20 +829,49 @@ function renderCustomCardInStore(cardData) {
 
 // Inicializador de Sincronización Continua e Inmediata
 if (typeof window !== 'undefined') {
-    // 1. Ejecutar de inmediato al cargar el script
+    // 1. Escuchar mensajes postMessage (para cuando admin y tienda están abiertas en simultáneo)
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'ARCANA_SYNC_PAYLOAD') {
+            applySyncedStorePayload(event.data.payload);
+        } else if (event.data && event.data.type === 'ARCANA_PING_SYNC') {
+            broadcastStorefrontSync();
+        }
+    });
+
+    // 2. Al cargar, revisar si viene payload en el hash (#sync=...)
+    function checkUrlSyncPayload() {
+        if (window.location.hash && window.location.hash.includes('sync=')) {
+            try {
+                const raw = decodeURIComponent(window.location.hash.split('sync=')[1]);
+                const payload = JSON.parse(raw);
+                applySyncedStorePayload(payload);
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, null, window.location.pathname + window.location.search);
+                }
+            } catch(e) {}
+        }
+    }
+    checkUrlSyncPayload();
+
+    // 3. Ejecutar de inmediato al cargar el script
     applyStorefrontCustomizations();
     
-    // 2. Al estar listo el DOM
-    document.addEventListener('DOMContentLoaded', applyStorefrontCustomizations);
-    window.addEventListener('load', applyStorefrontCustomizations);
+    // 4. Al estar listo el DOM
+    document.addEventListener('DOMContentLoaded', () => {
+        checkUrlSyncPayload();
+        applyStorefrontCustomizations();
+    });
+    window.addEventListener('load', () => {
+        checkUrlSyncPayload();
+        applyStorefrontCustomizations();
+    });
     
-    // 3. Al dispararse evento storage de otra pestaña
+    // 5. Al dispararse evento storage de otra pestaña
     window.addEventListener('storage', (e) => {
         applyStorefrontCustomizations();
     });
 
-    // 4. Polling ultra-ligero cada 400ms: garantiza sincronización instantánea entre pestañas
-    // incluso en navegadores que bloquean eventos storage en rutas locales (file:///)
+    // 6. Polling ligero cada 350ms para verificar cambios de timestamp
     setInterval(() => {
         if (typeof localStorage === 'undefined') return;
         const currentStamp = (localStorage.getItem('arcana_version') || '') + 
@@ -702,7 +881,14 @@ if (typeof window !== 'undefined') {
             lastStorefrontStamp = currentStamp;
             applyStorefrontCustomizations();
         }
-    }, 400);
+    }, 350);
+
+    // 7. Si fue abierta desde el panel admin, pedir estado actual
+    if (window.opener && !window.opener.closed) {
+        try {
+            window.opener.postMessage({ type: 'ARCANA_PING_SYNC' }, '*');
+        } catch(e) {}
+    }
 }
 
 // Filtro de Streaming
@@ -732,7 +918,7 @@ function filterStreaming(categoria, botonClickeado) {
 }
 
 // =========================================================================
-// 5. CARRITO DE COMPRAS Y PEDIDO A WHATSAPP
+// 6. CARRITO DE COMPRAS Y PEDIDO A WHATSAPP
 // =========================================================================
 let cart = [];
 
@@ -804,34 +990,35 @@ function closeVariantModal() {
     if (modal) modal.style.display = 'none';
 }
 
-function finishAddToCart(title, option) {
-    cart.push({
-        name: title,
-        variant: option.name,
-        price: option.price
-    });
+function finishAddToCart(name, option) {
+    cart.push({ name: name, price: option.price, variant: option.name });
     updateCartUI();
-    const cartFloat = document.getElementById('cart-float');
-    if(cartFloat) {
-        cartFloat.style.transform = 'scale(1.2)';
-        setTimeout(() => cartFloat.style.transform = 'scale(1)', 200);
+    showToastFeedback(`${name} (${option.name}) añadido`);
+}
+
+function showToastFeedback(text) {
+    let toast = document.getElementById('store-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'store-toast';
+        toast.style.cssText = "position: fixed; bottom: 85px; right: 25px; background: rgba(10, 10, 15, 0.95); border: 1px solid var(--neon-pink); color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 0 15px rgba(255, 0, 255, 0.4); z-index: 9999; font-weight: bold; transition: opacity 0.3s; font-size: 0.9rem;";
+        document.body.appendChild(toast);
     }
+    toast.innerHTML = `<i class="fas fa-cart-plus" style="color: var(--neon-pink); margin-right: 8px;"></i> ${text}`;
+    toast.style.opacity = '1';
+    toast.style.display = 'block';
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.style.display = 'none', 300);
+    }, 2000);
 }
 
 function updateCartUI() {
-    const count = document.getElementById('cart-count');
-    if(count) count.innerText = cart.length;
-    
-    const cartFloat = document.getElementById('cart-float');
-    if(cartFloat) {
-        if(cart.length > 0) {
-            cartFloat.className = "cart-float-visible";
-            cartFloat.style.display = "flex";
-        } else {
-            cartFloat.className = "cart-float-hidden";
-            cartFloat.style.display = "none";
-            closeCart();
-        }
+    const countEl = document.getElementById('cart-count');
+    const floatEl = document.getElementById('cart-float');
+    if (countEl) countEl.innerText = cart.length;
+    if (floatEl) {
+        floatEl.style.display = cart.length > 0 ? 'flex' : 'none';
     }
 
     const itemsContainer = document.getElementById('cart-items');
@@ -901,7 +1088,7 @@ function checkoutWhatsApp() {
 }
 
 // =========================================================================
-// 6. MOTOR DE AUDIO SINTETIZADO CYBERPUNK (Web Audio API)
+// 7. MOTOR DE AUDIO SINTETIZADO CYBERPUNK (Web Audio API)
 // =========================================================================
 let audioContext = null;
 let soundEnabled = true;
@@ -942,6 +1129,14 @@ function playCyberSound(type = 'click') {
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
             osc.start(now);
             osc.stop(now + 0.08);
+        } else if (type === 'toggle-low') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(580, now);
+            osc.frequency.setValueAtTime(740, now + 0.05);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
         } else if (type === 'toggle-off') {
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(700, now);
@@ -963,7 +1158,7 @@ function playCyberSound(type = 'click') {
             osc.frequency.setValueAtTime(523.25, now);
             osc.frequency.setValueAtTime(659.25, now + 0.06);
             osc.frequency.setValueAtTime(783.99, now + 0.12);
-            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.setValueAtTime(0.09, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
             osc.start(now);
             osc.stop(now + 0.2);
@@ -978,7 +1173,7 @@ function toggleSound() {
         if (soundEnabled) {
             btn.classList.add('active');
             btn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido: ON';
-            playCyberSound('save');
+            playCyberSound('click');
         } else {
             btn.classList.remove('active');
             btn.innerHTML = '<i class="fas fa-volume-mute"></i> Sonido: OFF';
@@ -987,231 +1182,246 @@ function toggleSound() {
 }
 
 // =========================================================================
-// 7. PANEL DE ADMINISTRACIÓN CYBERPUNK: admin.html
+// 8. PANEL DE ADMINISTRACIÓN CYBERPUNK HUD (admin.html)
 // =========================================================================
-
-let adminCatalog = [];
+let currentViewMode = 'grid'; // 'grid' | 'table'
 let currentFilterCategory = 'todas';
-let currentFilterStock = 'todos';
-let currentSearchQuery = '';
-let currentViewMode = 'grid';
-
-if (typeof window !== 'undefined') {
-    if (window.location.pathname.includes('admin.html') || window.location.href.includes('admin.html')) {
-        document.addEventListener('DOMContentLoaded', () => {
-            currentViewMode = localStorage.getItem('arcana_admin_view_mode') || 'grid';
-            checkAdminSession();
-        });
-        if (document.readyState === 'interactive' || document.readyState === 'complete') {
-            currentViewMode = localStorage.getItem('arcana_admin_view_mode') || 'grid';
-            checkAdminSession();
-        }
-    }
-}
-
-function checkAdminSession() {
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('arcana_admin_logged') === 'true') {
-        showDashboard();
-    }
-}
+let adminCatalog = [];
 
 function login() {
-    playCyberSound('save');
-    if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('arcana_admin_logged', 'true');
+    initAudio();
+    const passInput = document.getElementById('admin-pass');
+    const pass = passInput ? passInput.value : '';
+    if (pass === 'arcana2026' || pass === '') {
+        playCyberSound('save');
+        const loginBox = document.getElementById('login-box');
+        const dashboard = document.getElementById('dashboard');
+        const logoutBtn = document.getElementById('logout-btn');
+        const headerPulse = document.getElementById('header-pulse');
+
+        if (loginBox) loginBox.style.display = 'none';
+        if (dashboard) dashboard.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'inline-block';
+        if (headerPulse) headerPulse.style.display = 'inline-flex';
+
+        initAdminDashboard();
+        showAdminToast('Sesión iniciada. Bienvenido al Terminal Arcana.');
+    } else {
+        playCyberSound('delete');
+        alert('Contraseña incorrecta. (Pista: usa arcana2026 o déjala vacía).');
     }
-    showDashboard();
 }
 
 function logout() {
     playCyberSound('click');
-    if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem('arcana_admin_logged');
-    }
     const loginBox = document.getElementById('login-box');
     const dashboard = document.getElementById('dashboard');
     const logoutBtn = document.getElementById('logout-btn');
+    const headerPulse = document.getElementById('header-pulse');
+
     if (loginBox) loginBox.style.display = 'block';
     if (dashboard) dashboard.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
+    if (headerPulse) headerPulse.style.display = 'none';
 }
 
-function showDashboard() {
-    const loginBox = document.getElementById('login-box');
-    const dashboard = document.getElementById('dashboard');
-    const logoutBtn = document.getElementById('logout-btn');
-    if (loginBox) loginBox.style.display = 'none';
-    if (dashboard) dashboard.style.display = 'block';
-    if (logoutBtn) logoutBtn.style.display = 'inline-block';
-
-    initAdminImagesSelect();
-    setViewMode(currentViewMode, false);
+function initAdminDashboard() {
+    populateImageSelects();
     loadAdminCatalog();
+    initChipsBar();
 }
 
-function setViewMode(mode, playSound = true) {
-    currentViewMode = mode;
-    localStorage.setItem('arcana_admin_view_mode', mode);
-    if (playSound) playCyberSound('click');
-
-    const btnGrid = document.getElementById('view-btn-grid');
-    const btnTable = document.getElementById('view-btn-table');
-    const gridContainer = document.getElementById('admin-cards-grid');
-    const tableContainer = document.getElementById('admin-table-container');
-
-    if (btnGrid && btnTable && gridContainer && tableContainer) {
-        if (mode === 'grid') {
-            btnGrid.classList.add('active');
-            btnTable.classList.remove('active');
-            gridContainer.style.display = 'grid';
-            tableContainer.style.display = 'none';
-        } else {
-            btnTable.classList.add('active');
-            btnGrid.classList.remove('active');
-            gridContainer.style.display = 'none';
-            tableContainer.style.display = 'block';
-        }
-    }
-}
-
-function initAdminImagesSelect() {
+function populateImageSelects() {
     const editSelect = document.getElementById('edit-card-image');
     const addSelect = document.getElementById('add-card-image');
-    if (!addSelect) return;
 
-    let optionsHtml = '';
-    ARCANA_IMAGES.forEach(img => {
-        optionsHtml += `<option value="${img.file}">${img.name} (${img.file})</option>`;
-    });
+    const optionsHtml = ARCANA_IMAGES.map(img => 
+        `<option value="${img.file}">${img.name} (${img.file})</option>`
+    ).join('');
 
-    if (addSelect) addSelect.innerHTML = optionsHtml;
     if (editSelect) editSelect.innerHTML = optionsHtml;
+    if (addSelect) addSelect.innerHTML = optionsHtml;
 }
 
 function loadAdminCatalog() {
     adminCatalog = getAllCatalogProducts(true);
+    updateAdminKPIs();
     renderCategoryChips();
     renderAdminViews();
-    updateAdminKPIs();
+}
+
+// 9. KPIs del Dashboard
+function updateAdminKPIs() {
+    const totalEl = document.getElementById('kpi-total');
+    const inStockEl = document.getElementById('kpi-in-stock');
+    const lowStockEl = document.getElementById('kpi-low-stock');
+    const outStockEl = document.getElementById('kpi-out-stock');
+    const categoriesEl = document.getElementById('kpi-categories');
+
+    const barInStock = document.getElementById('kpi-bar-in-stock');
+    const barLowStock = document.getElementById('kpi-bar-low-stock');
+    const barOutStock = document.getElementById('kpi-bar-out-stock');
+
+    const activeProducts = adminCatalog.filter(p => !p.isDeleted);
+    const total = activeProducts.length;
+
+    let inCount = 0;
+    let lowCount = 0;
+    let outCount = 0;
+
+    activeProducts.forEach(p => {
+        const state = getProductStockState(p);
+        if (state === 'agotado') outCount++;
+        else if (state === 'pocas') lowCount++;
+        else inCount++;
+    });
+
+    const categoriesSet = new Set(activeProducts.map(p => p.saleType || p.category));
+
+    if (totalEl) totalEl.innerText = total;
+    if (inStockEl) inStockEl.innerText = inCount;
+    if (lowStockEl) lowStockEl.innerText = lowCount;
+    if (outStockEl) outStockEl.innerText = outCount;
+    if (categoriesEl) categoriesEl.innerText = categoriesSet.size;
+
+    if (total > 0) {
+        if (barInStock) barInStock.style.width = `${(inCount / total) * 100}%`;
+        if (barLowStock) barLowStock.style.width = `${(lowCount / total) * 100}%`;
+        if (barOutStock) barOutStock.style.width = `${(outCount / total) * 100}%`;
+    }
+}
+
+// 10. Barra de Filtro Rápido con Chips
+function initChipsBar() {
+    renderCategoryChips();
 }
 
 function renderCategoryChips() {
-    const chipsContainer = document.getElementById('admin-category-chips');
-    if (!chipsContainer) return;
+    const container = document.getElementById('admin-category-chips');
+    if (!container) return;
 
     const activeProducts = adminCatalog.filter(p => !p.isDeleted);
-    const deletedCount = adminCatalog.filter(p => p.isDeleted).length;
+    const categoriesMap = {};
 
-    const catCounts = {};
     activeProducts.forEach(p => {
-        const cat = p.category || p.saleType || 'General';
-        catCounts[cat] = (catCounts[cat] || 0) + 1;
+        const cat = p.saleType || p.category || 'General';
+        categoriesMap[cat] = (categoriesMap[cat] || 0) + 1;
     });
 
+    const deletedCount = adminCatalog.filter(p => p.isDeleted).length;
+
     let html = `
-        <button class="admin-chip ${currentFilterCategory === 'todas' ? 'active' : ''}" onclick="selectCategoryChip('todas')">
-            <i class="fas fa-layer-group"></i> Todas <span class="chip-count">${activeProducts.length}</span>
+        <button class="admin-chip ${currentFilterCategory === 'todas' ? 'active' : ''}" onclick="filterByChip('todas')">
+            <i class="fas fa-layer-group"></i> Todas
+            <span class="chip-count">${activeProducts.length}</span>
         </button>
     `;
 
-    Object.keys(catCounts).forEach(cat => {
+    Object.keys(categoriesMap).sort().forEach(cat => {
+        const isActive = currentFilterCategory === cat;
         html += `
-            <button class="admin-chip ${currentFilterCategory === cat ? 'active' : ''}" onclick="selectCategoryChip('${cat}')">
-                ${cat} <span class="chip-count">${catCounts[cat]}</span>
+            <button class="admin-chip ${isActive ? 'active' : ''}" onclick="filterByChip('${cat}')">
+                ${cat}
+                <span class="chip-count">${categoriesMap[cat]}</span>
             </button>
         `;
     });
 
-    html += `
-        <button class="admin-chip ${currentFilterCategory === 'papelera' ? 'active' : ''}" style="${deletedCount > 0 ? 'border-color: #ff4444; color: #ff8888;' : 'opacity: 0.6;'}" onclick="selectCategoryChip('papelera')">
-            <i class="fas fa-trash-alt"></i> Papelera <span class="chip-count" style="background: rgba(255, 68, 68, 0.4); color: white;">${deletedCount}</span>
-        </button>
-    `;
+    if (deletedCount > 0) {
+        html += `
+            <button class="admin-chip ${currentFilterCategory === 'papelera' ? 'active' : ''}" style="border-color: rgba(255, 68, 68, 0.4); color: #ff6666;" onclick="filterByChip('papelera')">
+                <i class="fas fa-trash-alt"></i> Papelera
+                <span class="chip-count">${deletedCount}</span>
+            </button>
+        `;
+    }
 
-    chipsContainer.innerHTML = html;
+    container.innerHTML = html;
 }
 
-function selectCategoryChip(cat) {
+function filterByChip(cat) {
     playCyberSound('click');
     currentFilterCategory = cat;
     renderCategoryChips();
     renderAdminViews();
 }
 
-function updateAdminKPIs() {
-    const totalEl = document.getElementById('kpi-total');
-    const inStockEl = document.getElementById('kpi-in-stock');
-    const outStockEl = document.getElementById('kpi-out-stock');
-    const categoriesEl = document.getElementById('kpi-categories');
-    const inStockFill = document.getElementById('kpi-bar-in-stock');
-    const outStockFill = document.getElementById('kpi-bar-out-stock');
+function setViewMode(mode) {
+    playCyberSound('click');
+    currentViewMode = mode;
+    const btnGrid = document.getElementById('view-btn-grid');
+    const btnTable = document.getElementById('view-btn-table');
+    const gridEl = document.getElementById('admin-cards-grid');
+    const tableEl = document.getElementById('admin-table-container');
 
-    if (!totalEl) return;
-
-    const activeList = adminCatalog.filter(p => !p.isDeleted);
-    const total = activeList.length;
-    const inStock = activeList.filter(p => p.inStock).length;
-    const outStock = total - inStock;
-    const categories = new Set(activeList.map(p => p.category || p.saleType)).size;
-
-    totalEl.innerText = total;
-    inStockEl.innerText = inStock;
-    outStockEl.innerText = outStock;
-    categoriesEl.innerText = categories;
-
-    if (inStockFill && outStockFill && total > 0) {
-        const inPct = Math.round((inStock / total) * 100);
-        const outPct = 100 - inPct;
-        inStockFill.style.width = inPct + '%';
-        outStockFill.style.width = outPct + '%';
+    if (mode === 'grid') {
+        if (btnGrid) btnGrid.classList.add('active');
+        if (btnTable) btnTable.classList.remove('active');
+        if (gridEl) gridEl.style.display = 'grid';
+        if (tableEl) tableEl.style.display = 'none';
+    } else {
+        if (btnGrid) btnGrid.classList.remove('active');
+        if (btnTable) btnTable.classList.add('active');
+        if (gridEl) gridEl.style.display = 'none';
+        if (tableEl) tableEl.style.display = 'block';
     }
 }
 
 function filterAdminProducts() {
-    const searchInput = document.getElementById('admin-search');
-    const stockSelect = document.getElementById('admin-stock-filter');
-
-    currentSearchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    currentFilterStock = stockSelect ? stockSelect.value : 'todos';
-
     renderAdminViews();
 }
 
-function getFilteredList() {
+function getFilteredProducts() {
+    const searchInput = document.getElementById('admin-search');
+    const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const stockFilter = document.getElementById('admin-stock-filter');
+    const stockVal = stockFilter ? stockFilter.value : 'todos';
+
     return adminCatalog.filter(p => {
+        // Filtro papelera
         if (currentFilterCategory === 'papelera') {
             if (!p.isDeleted) return false;
         } else {
             if (p.isDeleted) return false;
-            const matchesCategory = currentFilterCategory === 'todas' || 
-                p.category === currentFilterCategory || 
-                p.saleType === currentFilterCategory;
-            if (!matchesCategory) return false;
+            if (currentFilterCategory !== 'todas') {
+                const cat = p.saleType || p.category || '';
+                if (cat !== currentFilterCategory && p.category !== currentFilterCategory) {
+                    return false;
+                }
+            }
         }
 
-        const matchesSearch = !currentSearchQuery || 
-            p.name.toLowerCase().includes(currentSearchQuery) || 
-            p.id.toLowerCase().includes(currentSearchQuery) || 
-            (p.category && p.category.toLowerCase().includes(currentSearchQuery)) ||
-            (p.saleType && p.saleType.toLowerCase().includes(currentSearchQuery)) ||
-            (p.price && p.price.toLowerCase().includes(currentSearchQuery));
+        // Filtro de Stock de 3 estados
+        const state = getProductStockState(p);
+        if (stockVal === 'en-stock' && state !== 'en-stock') return false;
+        if (stockVal === 'pocas' && state !== 'pocas') return false;
+        if (stockVal === 'agotado' && state !== 'agotado') return false;
 
-        const matchesStock = currentFilterStock === 'todos' || 
-            (currentFilterStock === 'en-stock' && p.inStock) || 
-            (currentFilterStock === 'agotado' && !p.inStock);
+        // Búsqueda de texto
+        if (searchVal) {
+            const matchName = (p.name || '').toLowerCase().includes(searchVal);
+            const matchId = (p.id || '').toLowerCase().includes(searchVal);
+            const matchCat = (p.category || '').toLowerCase().includes(searchVal);
+            const matchSale = (p.saleType || '').toLowerCase().includes(searchVal);
+            const matchPrice = (p.price || '').toLowerCase().includes(searchVal);
+            const matchDesc = (p.description || '').toLowerCase().includes(searchVal);
+            if (!matchName && !matchId && !matchCat && !matchSale && !matchPrice && !matchDesc) {
+                return false;
+            }
+        }
 
-        return matchesSearch && matchesStock;
+        return true;
     });
 }
 
 function renderAdminViews() {
-    const filtered = getFilteredList();
-    renderAdminCardsGrid(filtered);
+    const filtered = getFilteredProducts();
+    renderAdminCards(filtered);
     renderAdminTableRows(filtered);
 }
 
-// 8. Renderizado Vista Cuadrícula (Card Grid Cyberpunk)
-function renderAdminCardsGrid(filtered) {
+// 11. Renderizado Vista Cuadrícula con Botón de Stock HUD Avanzado
+function renderAdminCards(filtered) {
     const grid = document.getElementById('admin-cards-grid');
     if (!grid) return;
 
@@ -1219,10 +1429,9 @@ function renderAdminCardsGrid(filtered) {
 
     if (filtered.length === 0) {
         grid.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: #888; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
-                <i class="fas fa-search" style="font-size: 2.5rem; margin-bottom: 12px; display: block; opacity: 0.4;"></i>
-                <h3 style="color: #bbb; margin-bottom: 6px;">No se encontraron productos</h3>
-                <p style="font-size: 0.9rem;">Prueba con otros términos de búsqueda o selecciona otra categoría.</p>
+            <div style="grid-column: 1/-1; text-align: center; padding: 50px 20px; color: #888;">
+                <i class="fas fa-search" style="font-size: 2.5rem; margin-bottom: 12px; color: #555;"></i>
+                <p>No se encontraron productos que coincidan con los filtros aplicados.</p>
             </div>
         `;
         return;
@@ -1230,58 +1439,89 @@ function renderAdminCardsGrid(filtered) {
 
     filtered.forEach(p => {
         const isCustom = p.isCustomCard || !DEFAULT_PRODUCTS.some(dp => dp.id === p.id);
-        const stockBorderClass = !p.inStock ? 'out-of-stock-border' : '';
+        const state = getProductStockState(p);
+        
+        let stockClassBox = 'stock-state-in-stock';
+        let badgeClass = 'badge-in-stock';
+        let ledClass = 'led-green';
+        let statusLabel = 'EN STOCK';
+
+        if (state === 'pocas') {
+            stockClassBox = 'stock-state-low';
+            badgeClass = 'badge-low';
+            ledClass = 'led-yellow';
+            statusLabel = 'POCAS UNIDADES';
+        } else if (state === 'agotado') {
+            stockClassBox = 'stock-state-out-of-stock';
+            badgeClass = 'badge-out-of-stock';
+            ledClass = 'led-red';
+            statusLabel = 'AGOTADO';
+        }
+
         const cardBox = document.createElement('div');
-        cardBox.className = `admin-card-box ${stockBorderClass}`;
-        cardBox.id = `grid-card-${p.id}`;
+        cardBox.className = `admin-card-box ${state === 'agotado' ? 'out-of-stock-border' : ''}`;
+        cardBox.id = `admin-card-${p.id}`;
 
         cardBox.innerHTML = `
             <div>
                 <div class="admin-card-topbar">
-                    <span class="badge-id">${p.id}</span>
-                    <div>
-                        <span class="badge-category">${p.category || 'General'}</span>
-                        ${isCustom ? '<span class="badge-custom">NUEVA</span>' : ''}
-                        ${p.isDeleted ? '<span class="badge-custom" style="border-color:#ff4444; color:#ff4444; background:rgba(255,68,68,0.2);">PAPELERA</span>' : ''}
-                    </div>
+                    <span class="badge-id" title="Identificador único">${p.id}</span>
+                    <span class="badge-category">${p.saleType || p.category || 'General'}</span>
                 </div>
 
                 <div class="admin-card-media">
-                    <img src="${p.image || 'Arcana_Logo.png'}" alt="${p.name}" class="${p.inStock ? '' : 'sold-out-img'}">
-                    <span class="media-badge" style="background: ${p.inStock ? 'rgba(0, 255, 128, 0.85); color: black;' : 'rgba(255, 68, 68, 0.85); color: white;'}">
-                        ${p.inStock ? 'EN STOCK' : 'AGOTADO'}
-                    </span>
+                    <img src="${p.image || 'Arcana_Logo.png'}" alt="${p.name}">
+                    ${isCustom ? '<span class="badge-custom media-badge">NUEVA CARTA</span>' : ''}
+                    ${p.isDeleted ? '<span class="badge-custom media-badge" style="border-color:#ff4444; color:#ff4444;">PAPELERA</span>' : ''}
                 </div>
 
                 <div class="admin-card-body">
                     <h3>${p.name}</h3>
+                    ${p.customCategoryTitle ? `<div style="font-size: 0.8rem; color: #ffd700; margin-bottom: 4px;"><i class="fas fa-heading"></i> ${p.customCategoryTitle}</div>` : ''}
                     <div class="admin-card-price">${p.price}</div>
-                    <div class="admin-card-desc" title="${p.description}">${p.description || 'Sin descripción'}</div>
+                    <div class="admin-card-desc" title="${p.description}">${p.description || '<em style="color:#666;">Sin descripción</em>'}</div>
                 </div>
             </div>
 
             <div>
-                <!-- Interruptor Cyber Switch -->
-                <div class="switch-container">
-                    <span class="switch-label" style="color: ${p.inStock ? '#00ff80' : '#ff4444'}">
-                        <i class="fas ${p.inStock ? 'fa-check-circle' : 'fa-times-circle'}"></i> 
-                        ${p.inStock ? 'En Stock' : 'Agotado'}
-                    </span>
-                    <label class="cyber-toggle" title="Clic para cambiar stock inmediatamente">
-                        <input type="checkbox" ${p.inStock ? 'checked' : ''} onchange="toggleProductStock('${p.id}')">
-                        <span class="cyber-slider"></span>
-                    </label>
+                <!-- CONTROL DE STOCK AVANZADO CYBER HUD -->
+                <div class="hud-stock-control ${stockClassBox}" id="hud-ctrl-${p.id}">
+                    <div class="hud-stock-header">
+                        <span class="hud-stock-badge ${badgeClass}">
+                            <span class="hud-led ${ledClass}"></span>
+                            ${statusLabel}
+                        </span>
+                        <button type="button" onclick="cycleProductStock('${p.id}')" style="background: transparent; border: none; color: #888; cursor: pointer; font-size: 0.75rem;" title="Alternar rápidamente">
+                            <i class="fas fa-sync-alt"></i> Alternar
+                        </button>
+                    </div>
+
+                    <!-- Pastillas de 3 Estados -->
+                    <div class="hud-stock-pills">
+                        <button type="button" class="hud-pill-btn pill-in-stock ${state === 'en-stock' ? 'active' : ''}" 
+                                onclick="setProductStockAdvanced('${p.id}', 'en-stock')" title="Marcar como En Stock (Disponible)">
+                            <i class="fas fa-check"></i> Stock
+                        </button>
+                        <button type="button" class="hud-pill-btn pill-low ${state === 'pocas' ? 'active' : ''}" 
+                                onclick="setProductStockAdvanced('${p.id}', 'pocas')" title="Marcar como Pocas Unidades (Alerta ¡Últimas Piezas!)">
+                            <i class="fas fa-bolt"></i> Pocas
+                        </button>
+                        <button type="button" class="hud-pill-btn pill-out-of-stock ${state === 'agotado' ? 'active' : ''}" 
+                                onclick="setProductStockAdvanced('${p.id}', 'agotado')" title="Marcar como Agotado (Bloquea compras)">
+                            <i class="fas fa-ban"></i> Agotado
+                        </button>
+                    </div>
                 </div>
 
                 <div class="admin-card-actions">
                     ${!p.isDeleted ? `
-                        <button class="action-btn edit-btn" onclick="openEditModal('${p.id}')" title="Editar producto">
+                        <button class="action-btn edit-btn" onclick="openEditModal('${p.id}')" title="Editar precio, descripción y datos">
                             <i class="fas fa-edit"></i> Editar
                         </button>
                         <button class="action-btn" onclick="openWhatsAppSimulator('${p.id}')" style="background: rgba(37, 211, 102, 0.15); border: 1px solid #25D366; color: #25D366;" title="Probar mensaje de WhatsApp">
                             <i class="fab fa-whatsapp"></i>
                         </button>
-                        <button class="action-btn delete-btn" onclick="deleteCard('${p.id}')" title="Eliminar / Ocultar de la tienda">
+                        <button class="action-btn delete-btn" onclick="deleteCard('${p.id}')" title="Eliminar / Mover a papelera">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     ` : `
@@ -1297,7 +1537,7 @@ function renderAdminCardsGrid(filtered) {
     });
 }
 
-// 9. Renderizado Vista Tabla
+// 12. Renderizado Vista Tabla con Botón de Stock Avanzado
 function renderAdminTableRows(filtered) {
     const tbody = document.getElementById('admin-tbody');
     if (!tbody) return;
@@ -1318,9 +1558,21 @@ function renderAdminTableRows(filtered) {
 
     filtered.forEach(p => {
         const isCustom = p.isCustomCard || !DEFAULT_PRODUCTS.some(dp => dp.id === p.id);
-        const stockClass = p.inStock ? 'in-stock' : 'out-of-stock';
-        const stockIcon = p.inStock ? 'fa-check' : 'fa-times';
-        const stockText = p.inStock ? 'En stock' : 'Agotado';
+        const state = getProductStockState(p);
+
+        let stockClass = 'adv-in-stock';
+        let stockIcon = 'fa-check-circle';
+        let stockText = 'En stock';
+
+        if (state === 'pocas') {
+            stockClass = 'adv-low';
+            stockIcon = 'fa-bolt';
+            stockText = 'Pocas Unidades';
+        } else if (state === 'agotado') {
+            stockClass = 'adv-out-of-stock';
+            stockIcon = 'fa-ban';
+            stockText = 'Agotado';
+        }
 
         tbody.innerHTML += `
             <tr id="row-${p.id}">
@@ -1350,7 +1602,7 @@ function renderAdminTableRows(filtered) {
                     </span>
                 </td>
                 <td style="text-align: center;">
-                    <button class="stock-btn ${stockClass}" onclick="toggleProductStock('${p.id}')" title="Clic para alternar estado de stock">
+                    <button class="stock-btn-adv ${stockClass}" onclick="cycleProductStock('${p.id}')" title="Clic para alternar entre En Stock, Pocas Unidades y Agotado">
                         <i class="fas ${stockIcon}"></i> ${stockText}
                     </button>
                 </td>
@@ -1362,7 +1614,7 @@ function renderAdminTableRows(filtered) {
                         <button class="action-btn" onclick="openWhatsAppSimulator('${p.id}')" style="background: transparent; border: 1px solid #25D366; color: #25D366;" title="Simular WhatsApp">
                             <i class="fab fa-whatsapp"></i>
                         </button>
-                        <button class="action-btn delete-btn" onclick="deleteCard('${p.id}')" title="Eliminar / Ocultar">
+                        <button class="action-btn delete-btn" onclick="deleteCard('${p.id}')" title="Eliminar / Mover a papelera">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     ` : `
@@ -1376,13 +1628,17 @@ function renderAdminTableRows(filtered) {
     });
 }
 
-// 10. Modificar "En stock" individual e independientemente
-function toggleProductStock(id) {
+// 13. Modificar Estado de Stock Individual e Independiente (Sistema Avanzado)
+function setProductStockAdvanced(id, newState) {
     const prod = adminCatalog.find(p => p.id === id);
     if (!prod) return;
 
-    prod.inStock = !prod.inStock;
-    playCyberSound(prod.inStock ? 'toggle-on' : 'toggle-off');
+    prod.stockState = newState;
+    prod.inStock = (newState !== 'agotado');
+
+    if (newState === 'en-stock') playCyberSound('toggle-on');
+    else if (newState === 'pocas') playCyberSound('toggle-low');
+    else playCyberSound('toggle-off');
 
     const isCustom = prod.isCustomCard || !DEFAULT_PRODUCTS.some(dp => dp.id === id);
     if (isCustom) {
@@ -1390,23 +1646,44 @@ function toggleProductStock(id) {
         const idx = customCards.findIndex(c => c.id === id);
         if (idx !== -1) {
             customCards[idx].inStock = prod.inStock;
+            customCards[idx].stockState = newState;
             localStorage.setItem('arcana_custom_cards', JSON.stringify(customCards));
         }
     } else {
         const overrides = getProductOverrides();
         if (!overrides[id]) overrides[id] = {};
         overrides[id].inStock = prod.inStock;
+        overrides[id].stockState = newState;
         localStorage.setItem('arcana_product_overrides', JSON.stringify(overrides));
     }
 
     notifyStorefrontUpdate();
+    broadcastStorefrontSync();
     renderAdminViews();
     updateAdminKPIs();
-    showAdminToast(`Stock de "${prod.name}" cambiado a: ${prod.inStock ? 'En stock' : 'Agotado'}`);
+
+    const labelMap = { 'en-stock': '🟢 En stock (Disponible)', 'pocas': '🟡 Pocas unidades (Alerta)', 'agotado': '🔴 Agotado' };
+    showAdminToast(`Stock de "${prod.name}": ${labelMap[newState]}`);
 }
 
-// 11. Acciones por Lote (Bulk Category Actions)
-function bulkSetCategoryStock(inStock) {
+function cycleProductStock(id) {
+    const prod = adminCatalog.find(p => p.id === id);
+    if (!prod) return;
+    const current = getProductStockState(prod);
+    let nextState = 'en-stock';
+    if (current === 'en-stock') nextState = 'pocas';
+    else if (current === 'pocas') nextState = 'agotado';
+    else if (current === 'agotado') nextState = 'en-stock';
+    setProductStockAdvanced(id, nextState);
+}
+
+// Compatibilidad con llamadas heredadas
+function toggleProductStock(id) {
+    cycleProductStock(id);
+}
+
+// 14. Acciones de Stock por Lote
+function bulkSetCategoryStockState(targetState) {
     const cat = currentFilterCategory;
     if (cat === 'papelera') {
         alert('No se puede aplicar a la papelera.');
@@ -1415,24 +1692,32 @@ function bulkSetCategoryStock(inStock) {
     const targetProducts = adminCatalog.filter(p => !p.isDeleted && (cat === 'todas' || p.category === cat || p.saleType === cat));
     if (targetProducts.length === 0) return;
 
-    if (!confirm(`¿Deseas marcar ${targetProducts.length} producto(s) como "${inStock ? 'En stock' : 'Agotado'}"?`)) {
+    const labelMap = { 'en-stock': 'En stock', 'pocas': 'Pocas unidades', 'agotado': 'Agotado' };
+    if (!confirm(`¿Deseas marcar ${targetProducts.length} producto(s) de "${cat}" como "${labelMap[targetState]}"?`)) {
         return;
     }
 
-    playCyberSound(inStock ? 'toggle-on' : 'toggle-off');
+    if (targetState === 'en-stock') playCyberSound('toggle-on');
+    else if (targetState === 'pocas') playCyberSound('toggle-low');
+    else playCyberSound('toggle-off');
 
     const overrides = getProductOverrides();
     const customCards = getCustomCards();
 
     targetProducts.forEach(prod => {
-        prod.inStock = inStock;
+        prod.stockState = targetState;
+        prod.inStock = (targetState !== 'agotado');
         const isCustom = prod.isCustomCard || !DEFAULT_PRODUCTS.some(dp => dp.id === prod.id);
         if (isCustom) {
             const idx = customCards.findIndex(c => c.id === prod.id);
-            if (idx !== -1) customCards[idx].inStock = inStock;
+            if (idx !== -1) {
+                customCards[idx].inStock = prod.inStock;
+                customCards[idx].stockState = targetState;
+            }
         } else {
             if (!overrides[prod.id]) overrides[prod.id] = {};
-            overrides[prod.id].inStock = inStock;
+            overrides[prod.id].inStock = prod.inStock;
+            overrides[prod.id].stockState = targetState;
         }
     });
 
@@ -1440,12 +1725,17 @@ function bulkSetCategoryStock(inStock) {
     localStorage.setItem('arcana_custom_cards', JSON.stringify(customCards));
 
     notifyStorefrontUpdate();
+    broadcastStorefrontSync();
     renderAdminViews();
     updateAdminKPIs();
-    showAdminToast(`${targetProducts.length} productos marcados como ${inStock ? 'En stock' : 'Agotado'}`);
+    showAdminToast(`${targetProducts.length} producto(s) actualizados a: ${labelMap[targetState]}`);
 }
 
-// 12. Modal de Edición con Live Preview
+function bulkSetCategoryStock(inStock) {
+    bulkSetCategoryStockState(inStock ? 'en-stock' : 'agotado');
+}
+
+// 15. Modal de Edición con Live Preview
 function openEditModal(id) {
     playCyberSound('click');
     const prod = adminCatalog.find(p => p.id === id);
@@ -1456,11 +1746,14 @@ function openEditModal(id) {
     document.getElementById('edit-card-name').value = prod.name;
     document.getElementById('edit-card-price').value = prod.price;
     document.getElementById('edit-card-desc').value = prod.description || '';
-    document.getElementById('edit-card-stock').value = prod.inStock ? 'true' : 'false';
+    
+    const stockSelect = document.getElementById('edit-card-stock');
+    if (stockSelect) stockSelect.value = getProductStockState(prod);
 
     const imageSelect = document.getElementById('edit-card-image');
     if (imageSelect) {
         imageSelect.value = prod.image || 'Arcana_Logo.png';
+        if (!imageSelect.value) imageSelect.selectedIndex = 0;
     }
 
     updateEditLivePreview();
@@ -1473,22 +1766,33 @@ function closeEditModal() {
 }
 
 function updateEditLivePreview() {
-    const name = document.getElementById('edit-card-name').value || 'Nombre del producto';
-    const price = document.getElementById('edit-card-price').value || '$0.00 MXN';
-    const desc = document.getElementById('edit-card-desc').value || 'Descripción del producto...';
-    const inStock = document.getElementById('edit-card-stock').value === 'true';
-    const image = document.getElementById('edit-card-image').value || 'Arcana_Logo.png';
+    const name = document.getElementById('edit-card-name').value;
+    const price = document.getElementById('edit-card-price').value;
+    const desc = document.getElementById('edit-card-desc').value;
+    const stockStateVal = document.getElementById('edit-card-stock').value;
+    const inStock = (stockStateVal !== 'agotado');
+    const image = document.getElementById('edit-card-image').value;
 
     const previewContainer = document.getElementById('edit-live-preview');
     if (!previewContainer) return;
 
+    let stockText = 'En stock';
+    let stockColor = '#00ff80';
+    if (stockStateVal === 'pocas') {
+        stockText = '¡ÚLTIMAS PIEZAS!';
+        stockColor = '#ffd700';
+    } else if (stockStateVal === 'agotado') {
+        stockText = 'Agotado';
+        stockColor = '#ff4444';
+    }
+
     previewContainer.innerHTML = `
         <div class="game-card" style="width: 100%; max-width: 240px; margin: 0 auto; box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);">
-            <img src="${image}" alt="${name}" class="${inStock ? '' : 'sold-out-img'}" style="width: 100%; height: 140px; object-fit: cover;">
+            <img src="${image}" alt="${name}" class="${!inStock ? 'sold-out-img' : ''}" style="width: 100%; height: 140px; object-fit: cover;">
             <div class="game-info" style="padding: 12px;">
                 <h3 style="font-size: 1rem;">${name}</h3>
                 <p style="font-size: 0.8rem; margin: 4px 0;">${desc}</p>
-                <p class="stock-status" style="color: ${inStock ? '#00ff80' : '#ff4444'}; font-weight: bold; font-size: 0.8rem; margin-top: 4px;">${inStock ? 'En stock' : 'Agotado'}</p>
+                <p class="stock-status" style="color: ${stockColor}; font-weight: bold; font-size: 0.8rem; margin-top: 4px;">${stockText}</p>
                 <h4 style="color: var(--neon-pink); margin-top: 6px; font-size: 0.95rem;">${price}</h4>
                 <button class="cart-add-btn" style="margin-top: 8px; width: 100%; padding: 6px; font-size: 0.8rem; ${inStock ? '' : 'display: none;'}">Añadir al carrito</button>
                 ${!inStock ? '<h4 style="color: #ff4444; font-size: 0.85rem; margin-top: 6px; font-weight: bold;">AGOTADO</h4>' : ''}
@@ -1505,7 +1809,8 @@ function saveCardEdit(e) {
     const name = document.getElementById('edit-card-name').value.trim();
     const price = document.getElementById('edit-card-price').value.trim();
     const desc = document.getElementById('edit-card-desc').value.trim();
-    const inStock = document.getElementById('edit-card-stock').value === 'true';
+    const stockStateVal = document.getElementById('edit-card-stock').value;
+    const inStock = (stockStateVal !== 'agotado');
     const image = document.getElementById('edit-card-image').value;
 
     const prod = adminCatalog.find(p => p.id === id);
@@ -1515,6 +1820,7 @@ function saveCardEdit(e) {
     prod.price = price;
     prod.description = desc;
     prod.inStock = inStock;
+    prod.stockState = stockStateVal;
     if (image) prod.image = image;
 
     const isCustom = prod.isCustomCard || !DEFAULT_PRODUCTS.some(dp => dp.id === id);
@@ -1526,6 +1832,7 @@ function saveCardEdit(e) {
             customCards[idx].price = price;
             customCards[idx].description = desc;
             customCards[idx].inStock = inStock;
+            customCards[idx].stockState = stockStateVal;
             if (image) customCards[idx].image = image;
             localStorage.setItem('arcana_custom_cards', JSON.stringify(customCards));
         }
@@ -1536,25 +1843,27 @@ function saveCardEdit(e) {
         overrides[id].price = price;
         overrides[id].description = desc;
         overrides[id].inStock = inStock;
+        overrides[id].stockState = stockStateVal;
         overrides[id].image = image || prod.image;
         localStorage.setItem('arcana_product_overrides', JSON.stringify(overrides));
     }
 
     notifyStorefrontUpdate();
+    broadcastStorefrontSync();
     closeEditModal();
     renderAdminViews();
     updateAdminKPIs();
     showAdminToast(`Producto "${name}" modificado con éxito`);
 }
 
-// 13. Modal de Agregar Nueva Carta con Live Preview
+// 16. Modal de Agregar Nueva Carta con Live Preview
 function openAddCardModal() {
     playCyberSound('click');
     document.getElementById('add-card-name').value = '';
     document.getElementById('add-card-id').value = '';
     document.getElementById('add-card-price').value = '';
     document.getElementById('add-card-desc').value = '';
-    document.getElementById('add-card-stock').value = 'true';
+    document.getElementById('add-card-stock').value = 'en-stock';
     document.getElementById('add-custom-category-name').value = '';
     document.getElementById('add-card-image-custom').value = '';
 
@@ -1576,7 +1885,8 @@ function updateAddLivePreview() {
     const name = document.getElementById('add-card-name').value.trim() || 'Nombre del Producto';
     const price = document.getElementById('add-card-price').value.trim() || 'Precio: $0.00 MXN';
     const desc = document.getElementById('add-card-desc').value.trim() || 'Descripción de las ventajas del producto...';
-    const inStock = document.getElementById('add-card-stock').value === 'true';
+    const stockStateVal = document.getElementById('add-card-stock').value;
+    const inStock = (stockStateVal !== 'agotado');
     const imageCustom = document.getElementById('add-card-image-custom').value.trim();
     const imageSelect = document.getElementById('add-card-image').value;
     const image = imageCustom || imageSelect || 'Arcana_Logo.png';
@@ -1584,13 +1894,23 @@ function updateAddLivePreview() {
     const previewContainer = document.getElementById('add-live-preview');
     if (!previewContainer) return;
 
+    let stockText = 'En stock';
+    let stockColor = '#00ff80';
+    if (stockStateVal === 'pocas') {
+        stockText = '¡ÚLTIMAS PIEZAS!';
+        stockColor = '#ffd700';
+    } else if (stockStateVal === 'agotado') {
+        stockText = 'Agotado';
+        stockColor = '#ff4444';
+    }
+
     previewContainer.innerHTML = `
         <div class="game-card" style="width: 100%; max-width: 240px; margin: 0 auto; box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);">
-            <img src="${image}" alt="${name}" class="${inStock ? '' : 'sold-out-img'}" style="width: 100%; height: 140px; object-fit: cover;">
+            <img src="${image}" alt="${name}" class="${!inStock ? 'sold-out-img' : ''}" style="width: 100%; height: 140px; object-fit: cover;">
             <div class="game-info" style="padding: 12px;">
                 <h3 style="font-size: 1rem;">${name}</h3>
                 <p style="font-size: 0.8rem; margin: 4px 0;">${desc}</p>
-                <p class="stock-status" style="color: ${inStock ? '#00ff80' : '#ff4444'}; font-weight: bold; font-size: 0.8rem; margin-top: 4px;">${inStock ? 'En stock' : 'Agotado'}</p>
+                <p class="stock-status" style="color: ${stockColor}; font-weight: bold; font-size: 0.8rem; margin-top: 4px;">${stockText}</p>
                 <h4 style="color: var(--neon-pink); margin-top: 6px; font-size: 0.95rem;">${price}</h4>
                 <button class="cart-add-btn" style="margin-top: 8px; width: 100%; padding: 6px; font-size: 0.8rem; ${inStock ? '' : 'display: none;'}">Añadir al carrito</button>
                 ${!inStock ? '<h4 style="color: #ff4444; font-size: 0.85rem; margin-top: 6px; font-weight: bold;">AGOTADO</h4>' : ''}
@@ -1599,37 +1919,18 @@ function updateAddLivePreview() {
     `;
 }
 
-function toggleCustomCategoryField() {
+function toggleCustomCategoryInput() {
     playCyberSound('click');
-    const catGroup = document.getElementById('custom-category-group');
-    const catBtnText = document.getElementById('toggle-cat-btn-text');
-    if (!catGroup) return;
-
-    if (catGroup.style.display === 'none') {
-        catGroup.style.display = 'block';
-        if (catBtnText) catBtnText.innerText = '✕ Cancelar subtítulo nuevo';
-        document.getElementById('add-custom-category-name').focus();
+    const group = document.getElementById('custom-category-group');
+    const btnText = document.getElementById('toggle-cat-btn-text');
+    if (group.style.display === 'none') {
+        group.style.display = 'block';
+        btnText.innerText = '- Usar punto de venta existente';
     } else {
-        catGroup.style.display = 'none';
+        group.style.display = 'none';
+        btnText.innerText = '+ Crear nuevo subtítulo';
         document.getElementById('add-custom-category-name').value = '';
-        if (catBtnText) catBtnText.innerText = '+ Crear nuevo subtítulo';
     }
-}
-
-function autoGenerateCardId() {
-    const nameInput = document.getElementById('add-card-name');
-    const idInput = document.getElementById('add-card-id');
-    if (!nameInput || !idInput) return;
-    
-    const slug = nameInput.value
-        .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
-    
-    idInput.value = slug;
-    updateAddLivePreview();
 }
 
 function saveNewCard(e) {
@@ -1637,43 +1938,39 @@ function saveNewCard(e) {
     playCyberSound('save');
 
     const name = document.getElementById('add-card-name').value.trim();
-    let id = document.getElementById('add-card-id').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
-    const category = document.getElementById('add-card-category').value;
-    const customCategoryTitle = document.getElementById('add-custom-category-name').value.trim();
+    let id = document.getElementById('add-card-id').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
     const price = document.getElementById('add-card-price').value.trim();
     const desc = document.getElementById('add-card-desc').value.trim();
-    const inStock = document.getElementById('add-card-stock').value === 'true';
-    
+    const stockStateVal = document.getElementById('add-card-stock').value;
+    const inStock = (stockStateVal !== 'agotado');
+    const category = document.getElementById('add-card-category').value;
+    const customTitle = document.getElementById('add-custom-category-name').value.trim();
     const imageCustom = document.getElementById('add-card-image-custom').value.trim();
     const imageSelect = document.getElementById('add-card-image').value;
     const image = imageCustom || imageSelect || 'Arcana_Logo.png';
 
     if (!id) {
-        id = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        id = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4);
     }
 
-    if (adminCatalog.some(p => p.id === id && !p.isDeleted)) {
-        alert(`El identificador "${id}" ya está en uso. Por favor ingresa un ID único para la carta.`);
+    if (adminCatalog.some(p => p.id === id)) {
+        alert('Ya existe una carta con el ID "' + id + '". Por favor elige otro ID.');
         return;
     }
-
-    let filterClass = '';
-    if (category.includes('Completa')) filterClass = 'streaming-item completa';
-    if (category.includes('Perfil')) filterClass = 'streaming-item perfil';
 
     const newCardObj = {
         id: id,
         name: name,
-        category: customCategoryTitle || category,
-        saleType: customCategoryTitle ? `Subtítulo: ${customCategoryTitle}` : category,
-        customCategoryTitle: customCategoryTitle || null,
-        price: price.startsWith('Precio:') || price.includes(':') ? price : `Precio: ${price}`,
+        category: category,
+        saleType: customTitle ? `${category} (${customTitle})` : category,
+        customCategoryTitle: customTitle,
+        price: price,
         description: desc,
-        inStock: inStock,
         image: image,
-        filterClass: filterClass,
+        inStock: inStock,
+        stockState: stockStateVal,
         isCustomCard: true,
-        isDeleted: false
+        filterClass: category.toLowerCase().replace(/[^a-z0-9]/g, '-')
     };
 
     const customCards = getCustomCards();
@@ -1681,17 +1978,18 @@ function saveNewCard(e) {
     localStorage.setItem('arcana_custom_cards', JSON.stringify(customCards));
 
     notifyStorefrontUpdate();
+    broadcastStorefrontSync();
     closeAddModal();
     loadAdminCatalog();
-    showAdminToast(`Nueva carta "${name}" agregada a la tienda`);
+    showAdminToast(`Nueva carta "${name}" agregada con éxito`);
 }
 
-// 14. Eliminar CUALQUIER carta (con papelera de reciclaje)
+// 17. Eliminar / Restaurar Cartas (Con Papelera Segura)
 function deleteCard(id) {
     const prod = adminCatalog.find(p => p.id === id);
-    const name = prod ? prod.name : id;
+    if (!prod) return;
 
-    if (!confirm(`¿Mover la carta "${name}" a la papelera? (Dejará de verse en la tienda, pero podrás restaurarla cuando quieras).`)) {
+    if (!confirm(`¿Seguro que deseas eliminar la carta "${prod.name}" (ID: ${id}) de la tienda?`)) {
         return;
     }
 
@@ -1713,21 +2011,21 @@ function deleteCard(id) {
     }
 
     notifyStorefrontUpdate();
+    broadcastStorefrontSync();
     loadAdminCatalog();
-    showAdminToast(`Carta "${name}" enviada a la papelera`);
+    showAdminToast(`Carta "${prod.name}" movida a la papelera`);
 }
 
-// 15. Restaurar carta eliminada
 function restoreCard(id) {
     playCyberSound('save');
-    const prod = adminCatalog.find(p => p.id === id);
-    const name = prod ? prod.name : id;
+    const isCustom = !DEFAULT_PRODUCTS.some(dp => dp.id === id);
+    let name = id;
 
-    const isCustom = prod.isCustomCard || !DEFAULT_PRODUCTS.some(dp => dp.id === id);
     if (isCustom) {
         const customCards = getCustomCards();
         const idx = customCards.findIndex(c => c.id === id);
         if (idx !== -1) {
+            name = customCards[idx].name;
             customCards[idx].isDeleted = false;
             localStorage.setItem('arcana_custom_cards', JSON.stringify(customCards));
         }
@@ -1740,11 +2038,12 @@ function restoreCard(id) {
     }
 
     notifyStorefrontUpdate();
+    broadcastStorefrontSync();
     loadAdminCatalog();
     showAdminToast(`Carta "${name}" restaurada a la tienda`);
 }
 
-// 16. Configuración de WhatsApp y Mensaje Personalizado
+// 18. Configuración de WhatsApp y Mensaje Personalizado
 function openWhatsAppConfigModal() {
     playCyberSound('click');
     const config = getWhatsAppConfig();
@@ -1838,88 +2137,86 @@ function closeWhatsAppSimulator() {
 function testSendWhatsAppSim() {
     playCyberSound('save');
     const config = getWhatsAppConfig();
+    const phone = (config.phone || "528442279216").replace(/[^0-9]/g, '');
     const textEl = document.getElementById('wa-sim-text');
     if (!textEl) return;
-    const phone = (config.phone || "528442279216").replace(/[^0-9]/g, '');
     const encoded = encodeURIComponent(textEl.value);
     window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
 }
 
-// 17. Copia de Seguridad JSON (Exportar e Importar)
+// 19. Respaldo y Restauración JSON
 function exportBackupJSON() {
     playCyberSound('save');
     const data = {
-        version: "2.0",
-        date: new Date().toISOString(),
-        productOverrides: getProductOverrides(),
+        overrides: getProductOverrides(),
         customCards: getCustomCards(),
-        whatsappConfig: getWhatsAppConfig()
+        whatsappConfig: getWhatsAppConfig(),
+        version: "2.3",
+        date: new Date().toISOString()
     };
-    const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `arcana_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `arcana_respaldo_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showAdminToast('Copia de seguridad descargada');
+    showAdminToast('Copia de seguridad JSON descargada');
 }
 
-function importBackupJSON(fileInput) {
-    const file = fileInput.files[0];
+function importBackupJSON(input) {
+    const file = input.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = function(e) {
         try {
             const data = JSON.parse(e.target.result);
-            if (data.productOverrides) {
-                localStorage.setItem('arcana_product_overrides', JSON.stringify(data.productOverrides));
-            }
-            if (data.customCards) {
-                localStorage.setItem('arcana_custom_cards', JSON.stringify(data.customCards));
-            }
-            if (data.whatsappConfig) {
-                localStorage.setItem('arcana_whatsapp_config', JSON.stringify(data.whatsappConfig));
-            }
+            if (data.overrides) localStorage.setItem('arcana_product_overrides', JSON.stringify(data.overrides));
+            if (data.customCards) localStorage.setItem('arcana_custom_cards', JSON.stringify(data.customCards));
+            if (data.whatsappConfig) localStorage.setItem('arcana_whatsapp_config', JSON.stringify(data.whatsappConfig));
             notifyStorefrontUpdate();
-            playCyberSound('save');
+            broadcastStorefrontSync();
             loadAdminCatalog();
-            showAdminToast('Copia de seguridad restaurada con éxito');
+            playCyberSound('save');
+            showAdminToast('Respaldo restaurado con éxito');
         } catch(err) {
-            alert('Error al leer el archivo JSON de respaldo.');
+            playCyberSound('delete');
+            alert('Error: Archivo de respaldo no válido.');
         }
     };
     reader.readAsText(file);
-    fileInput.value = '';
+    input.value = '';
 }
 
-// 18. Restablecer valores de fábrica
 function resetToDefaults() {
-    if (!confirm('¿Restablecer todo el inventario, precios y descripciones a los valores originales de fábrica? Se conservarán los archivos base.')) {
-        return;
+    if (confirm('¿Restablecer todo a los valores de fábrica? Se borrarán las cartas creadas y modificaciones.')) {
+        playCyberSound('delete');
+        localStorage.removeItem('arcana_product_overrides');
+        localStorage.removeItem('arcana_custom_cards');
+        localStorage.removeItem('arcana_whatsapp_config');
+        notifyStorefrontUpdate();
+        broadcastStorefrontSync();
+        loadAdminCatalog();
+        showAdminToast('Configuración restablecida a valores originales');
     }
-    playCyberSound('delete');
-    localStorage.removeItem('arcana_product_overrides');
-    localStorage.removeItem('arcana_custom_cards');
-    localStorage.removeItem('arcana_whatsapp_config');
-    notifyStorefrontUpdate();
-    loadAdminCatalog();
-    showAdminToast('Catálogo restablecido a valores originales');
 }
 
-// Toast flotante HUD
-function showAdminToast(msg) {
+// 20. Toast Cyber HUD
+let adminToastTimeout = null;
+function showAdminToast(message) {
     const toast = document.getElementById('admin-toast');
-    const toastText = document.getElementById('admin-toast-text');
-    if (!toast || !toastText) return;
+    const text = document.getElementById('admin-toast-text');
+    if (!toast || !text) return;
 
-    toastText.innerText = msg;
+    text.innerText = message;
     toast.style.display = 'flex';
-    clearTimeout(window._toastTimeout);
-    window._toastTimeout = setTimeout(() => {
-        toast.style.display = 'none';
+    toast.style.opacity = '1';
+
+    if (adminToastTimeout) clearTimeout(adminToastTimeout);
+    adminToastTimeout = setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.style.display = 'none', 300);
     }, 3500);
 }
 
@@ -1935,6 +2232,8 @@ if (typeof module !== 'undefined' && module.exports) {
         getAllCatalogProducts,
         getProductOverrides,
         getCustomCards,
-        applyStorefrontCustomizations
+        applyStorefrontCustomizations,
+        getProductStockState,
+        setProductStockAdvanced
     };
 }
